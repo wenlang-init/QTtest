@@ -1,2 +1,5 @@
 nettunnel/ipattrc/3rdparty
 server/lib
+*.user
+nettunnel/NetTunnel.pro.user.63a0072
+nettunnel/NetTunnel.pro.user.9c5c311
