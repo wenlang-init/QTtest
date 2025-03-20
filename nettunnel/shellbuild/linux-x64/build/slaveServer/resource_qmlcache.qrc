@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<RCC>
+    <qresource prefix="/">
+        <file alias="qml/main.qml">../../../../slaveServer/qml/main.qml</file>
+        <file alias="images/Background.png">../../../../slaveServer/images/Background.png</file>
+        <file alias="qml/TurnServer.qml">../../../../slaveServer/qml/TurnServer.qml</file>
+        <file alias="qml/Weather.qml">../../../../slaveServer/qml/Weather.qml</file>
+        <file alias="qml/MComboBox.qml">../../../../slaveServer/qml/MComboBox.qml</file>
+    </qresource>
+</RCC>

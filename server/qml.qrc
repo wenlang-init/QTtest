@@ -1,0 +1,17 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/main.qml</file>
+        <file>qml/VideoPlayer.qml</file>
+        <file>qml/MetadataInfo.qml</file>
+        <file>qml/PlaybackControl.qml</file>
+        <file>qml/PlayerMenuBar.qml</file>
+        <file>qml/TracksInfo.qml</file>
+        <file>qml/PlaybackRateControl.qml</file>
+        <file>qml/PlaybackSeekControl.qml</file>
+        <file>qml/AudioControl.qml</file>
+        <file>qml/Mute_Icon.svg</file>
+        <file>qml/Speaker_Icon.svg</file>
+        <file>qml/loaderwgt.qml</file>
+        <file>listw/list.qml</file>
+    </qresource>
+</RCC>

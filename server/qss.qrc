@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qss/QComboBox.qss</file>
+        <file>qss/MacOS.qss</file>
+        <file>qss/actions/go-down-symbolic.symbolic.png</file>
+        <file>qss/actions/go-next-symbolic.symbolic.png</file>
+        <file>qss/actions/go-previous-symbolic.symbolic.png</file>
+        <file>qss/actions/go-up-symbolic.symbolic.png</file>
+        <file>qss/actions/object-select-symbolic.symbolic.png</file>
+        <file>qss/QTabWidget.qss</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/main.qml</file>
+        <file>images/Background.png</file>
+        <file>qml/TurnServer.qml</file>
+        <file>qml/Weather.qml</file>
+        <file>qml/MComboBox.qml</file>
+    </qresource>
+</RCC>

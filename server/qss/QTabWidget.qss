@@ -1,0 +1,43 @@
+QTabWidget::pane
+{
+	top:20px;
+	border:none;
+}
+QTabBar::tab
+{
+	color:#333333;
+	background:transparent;	
+	font-family:"微软雅黑";
+	font-size:14px;	
+	padding-left:-9px;
+	padding-right:-9px;
+	width:75px;
+	height:30px;
+	margin-left:0px;
+	margin-right:0px;
+} 
+QTabBar::tab:selected  //选中标签的状态
+{
+	color:#618BE5;
+	background:transparent;	
+	font-family:"微软雅黑";
+	font-size:14px;	
+	border-bottom:2px solid #618BE5;  //标签下部的样式
+}
+QTabBar::tab:hover   //鼠标移到标签上的状态
+{
+	color:#618BE5;
+	background:transparent;	
+	font-family:"微软雅黑";
+	font-size:14px;	
+}
+QTabWidget::tab-bar {
+    alignment: left;  
+	top:10px;
+	left:30px;	
+} 
+#detailWgt, #appealReasonWgt
+{
+	border:none;
+}
+

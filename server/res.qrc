@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>weather/citydata.txt</file>
+    </qresource>
+</RCC>
