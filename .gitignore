@@ -1,5 +1,7 @@
 nettunnel/ipattrc/3rdparty
+nettunnel/bin
+nettunnel/build
 server/lib
+server/bin
+server/build
 *.user
-nettunnel/NetTunnel.pro.user.63a0072
-nettunnel/NetTunnel.pro.user.9c5c311
