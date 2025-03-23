@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/main.qml</file>
+        <file>qml/DialogBox.qml</file>
+        <file>qml/ScrTextA.qml</file>
+        <file>qml/FliTextA.qml</file>
+        <file>qml/ScrTextE.qml</file>
+    </qresource>
+</RCC>

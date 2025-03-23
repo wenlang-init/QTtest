@@ -62,7 +62,10 @@ Item {
               anchors.fill: parent
               propagateComposedEvents: true
               hoverEnabled: true
-              onClicked: {
+              onClicked: function(mouse){
+                  // mouse.accepted = false
+                  // Parameter "mouse" is not declared. Injection of parameters into signal handlers is deprecated. Use JavaScript functions with formal parameters instead.
+                  // 自Qt6开始，QML中使用信号处理函数参数时，需要显式捕获参数，写法如下 onPositionChanged: function(mouse){}
                   mouse.accepted = false
                   listview.currentIndex = index;
                   for(var i = 0; i < listview.contentItem.children.length; ++i){

@@ -46,6 +46,7 @@ ListW::ListW(QWidget *parent)
             listmodel->getData(0,data);
             data.set_t3(QString("xxxxxxxxxxx %1").arg(data.t1()));
             listmodel->updateData(0,data);
+            //listmodel->clearData();
         }
 
         if(ib)ib=false;else ib=true;

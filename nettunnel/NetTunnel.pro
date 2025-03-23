@@ -7,7 +7,8 @@ SUBDIRS += \
     $$PWD/shellbuild \
     $$PWD/slaveServer \
     $$PWD/OtherTools \
-    $$PWD/netStatus
+    $$PWD/netStatus \
+    AIDialog
 
 #SUBDIRS += $$PWD/ipattrc
 

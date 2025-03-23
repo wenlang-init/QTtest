@@ -26,7 +26,9 @@ QVariant ListModel::data(const QModelIndex &index, int role) const
         QHash<int, QByteArray> temp = roleNames();
         QString key =  temp.value(role);
 
-        const QMetaObject *theMetaObject = m_modleData[index.row()]->metaObject(); //定义一个QMetaObject对象指针，用来获取类classTestClass的相关信息
+        QMutexLocker locker(const_cast<QMutex*>(&m_modleDataMutex)); // 死锁？
+        auto modeldate = m_modleData[index.row()];
+        const QMetaObject *theMetaObject = modeldate->metaObject(); //定义一个QMetaObject对象指针，用来获取类classTestClass的相关信息
         int iPropertyCount = theMetaObject->propertyCount();
         for (int i = 1; i < iPropertyCount; i++)
         {
@@ -34,7 +36,7 @@ QVariant ListModel::data(const QModelIndex &index, int role) const
             auto nameT = QString::fromStdString(oneProperty.name());
             if (nameT == key)
             {
-                auto tempData = oneProperty.read(m_modleData[index.row()]);
+                auto tempData = oneProperty.read(modeldate);
                 return tempData;
             }
         }
@@ -70,14 +72,22 @@ bool ListModel::addData(const ListDataInfo &data)
 
 bool ListModel::updateData(const int &index, const ListDataInfo &data)
 {
+    // QMetaObject::invokeMethod(this, [this]() {
+    //     beginResetModel();
+    //     // 更新数据
+    //     endResetModel();
+    // }, Qt::AutoConnection);
+
     QMutexLocker locker(&m_modleDataMutex);
     if (index < 0)
     {
         return false;
     }
+
     m_modleData[index]->setValue(data);
     QModelIndex modelIndex = this->index(index, 0, QModelIndex());
-    emit dataChanged(modelIndex, modelIndex);
+    locker.unlock();
+    emit dataChanged(modelIndex, modelIndex); // 这里会调用data函数?在不同线程发出这个信号应该不会死锁。在这之前解锁暂未出现死锁
     return true;
 }
 
@@ -110,10 +120,11 @@ bool ListModel::deleteData(const int &row)
 
 bool ListModel::clearData()
 {
+    beginResetModel();
     QMutexLocker locker(&m_modleDataMutex);
     qDeleteAll(m_modleData);
-    beginResetModel();
     m_modleData.clear();
+    locker.unlock();
     endResetModel();
     return true;
 }
