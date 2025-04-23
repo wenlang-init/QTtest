@@ -6,4 +6,4 @@ server/bin
 server/build
 *.user
 AIDialog
-nettunnel/shellbuild/linux-x64
+nettunnel/shellbuild/linux-x64/build
