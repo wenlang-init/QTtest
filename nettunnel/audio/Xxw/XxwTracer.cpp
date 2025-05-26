@@ -39,7 +39,8 @@ XxwTracer::XxwTracer(QCustomPlot *_plot, TracerType _type, QObject *parent)
         m_arrow->setPen(penDefault);
         m_arrow->setLayer("overlay");
         m_arrow->setClipToAxisRect(false);
-        m_arrow->setHead(QCPLineEnding::esSpikeArrow);//设置头部为箭头形状
+        //m_arrow->setHead(QCPLineEnding::esSpikeArrow);//设置头部为箭头形状
+        m_arrow->setHead(QCPLineEnding::esDisc);
 
         switch (m_type)
         {

@@ -36,6 +36,8 @@ CONFIG(debug,debug|release){
     DESTDIR=$$DESTDIRBASE/debug
     LIBS += -L$$DESTDIRBASE/debug/lib -lprintFunction
 } else {
+    # release 也记录行号函数名等信息，会造成额外开支，默认关闭
+    DEFINES += QT_MESSAGELOGCONTEXT
     DESTDIR=$$DESTDIRBASE/release
     android:contains(QT_ARCH, arm64-v8a){
         LIBS += -L$$DESTDIRBASE/release/lib -lprintFunction_arm64-v8a

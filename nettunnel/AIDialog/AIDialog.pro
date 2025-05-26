@@ -45,3 +45,4 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 HEADERS += \
     aimessage.h
+android: include(D:/software/Android/Qt/android_openssl/android_openssl-1.1.1l_1.0.2u/openssl.pri)

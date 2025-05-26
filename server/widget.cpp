@@ -118,7 +118,9 @@ Widget::Widget(QWidget *parent)
                             "   }\n"
                             "}");
 
-    Highlighter *highlighter = new Highlighter(editor->document());
+    Highlighter *highlighter = new Highlighter();
+    highlighter->setDocument(editor->document());
+    //Highlighter *highlighter = new Highlighter(editor->document());
     Q_UNUSED(highlighter)
 
     connect(ui->pushButtoncodeopen,&QPushButton::clicked,this,[=](){

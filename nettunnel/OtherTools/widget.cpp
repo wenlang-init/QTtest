@@ -11,6 +11,12 @@
 #include "wordtopdf/wordtopdf.h"
 #endif
 
+#include "codeeditor/codeedittestw.h"
+
+#include "graphics/graphicswidget.h"
+
+#include "listw/listw.h"
+
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::Widget)
@@ -63,6 +69,41 @@ void Widget::on_pushButton_3_clicked()
     syw->show();
     connect(syw, &QWidget::destroyed, this, [=](){
         qDebug();
+    });
+}
+
+
+void Widget::on_pushButtonqml_clicked()
+{
+    codeEditTestW *cew = new codeEditTestW;
+    cew->setGeometry(pos().rx(),pos().ry(),this->width(),this->height());
+    cew->show();
+    cew->setAttribute(Qt::WA_DeleteOnClose, true);
+    connect(cew,&codeEditTestW::destroyed,this,[=](){
+        qDebug()<<sender();
+    });
+}
+
+void Widget::on_pushButtonqmllist_clicked()
+{
+    ListW *listw = new ListW;
+    listw->setGeometry(pos().rx(),pos().ry(),this->width(),this->height());
+    listw->show();
+    listw->setAttribute(Qt::WA_DeleteOnClose, true);
+    connect(listw,&ListW::destroyed,this,[=](){
+        qDebug()<<sender();
+    });
+}
+
+
+void Widget::on_pushButtongraphics_clicked()
+{
+    GraphicsWidget *ghw = new GraphicsWidget;
+    ghw->setGeometry(pos().rx(),pos().ry(),this->width(),this->height());
+    ghw->show();
+    ghw->setAttribute(Qt::WA_DeleteOnClose, true);
+    connect(ghw,&GraphicsWidget::destroyed,this,[=](){
+        qDebug()<<sender();
     });
 }
 

@@ -24,6 +24,12 @@ private slots:
 
     void on_pushButton_3_clicked();
 
+    void on_pushButtonqml_clicked();
+
+    void on_pushButtonqmllist_clicked();
+
+    void on_pushButtongraphics_clicked();
+
 private:
     Ui::Widget *ui;
 };

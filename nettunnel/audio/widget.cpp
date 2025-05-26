@@ -4,6 +4,7 @@
 #include <QAudioDevice>
 #include <QMediaDevices>
 #include <QTimer>
+#include "printFunction.h"
 
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
@@ -564,6 +565,7 @@ void Widget::opensource()
 #endif
 
     audioin = new QAudioSource(format,this);
+    //qDebug()<<audioin->volume();
     connect(audioin, SIGNAL(stateChanged(QAudio::State)), this, SLOT(handleStateChanged(QAudio::State)));
     QIODevice *io = audioin->start();
     connect(io,&QIODevice::readyRead,this,[=](){
@@ -571,6 +573,8 @@ void Widget::opensource()
         //qDebug()<<data.size();
         //processData(data,format);
         emit readData(data,format);
+
+        emit writeData(data);
     });
 }
 
@@ -635,8 +639,12 @@ void Widget::opensink()
     }
 
     audioout = new QAudioSink(format,this);
+    //qDebug()<<audioout->volume();
     connect(audioout, SIGNAL(stateChanged(QAudio::State)), this, SLOT(handleStateChanged(QAudio::State)));
-    //QIODevice *io = audioout->start();
+    QIODevice *io = audioout->start();
+    connect(this,&Widget::writeData,this,[=](QByteArray &data){
+        io->write(data);
+    });
     //io->write("qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq");
 }
 
@@ -646,6 +654,7 @@ void Widget::closesink()
         audioout->stop();
         delete audioout;
         audioout = nullptr;
+        disconnect(this,&Widget::writeData,nullptr,nullptr);
     }
 }
 
@@ -669,6 +678,13 @@ void Widget::handleStateChanged(QAudio::State newState)
     case QAudio::StoppedState:
         // Stopped for other reasons
         if(audioout == sender()){
+            // Q_ENUM, Q_ENUM_NS, Q_FLAG or Q_FLAG_NS
+            //QMetaEnum::fromType<QAudio::Error>().valueToKey(audioout->error());
+            //NoError, OpenError, IOError, UnderrunError, FatalError
+            DEBUG_PRINT_LOG("%s",audioout->error()==QAudio::NoError?"NoError":audioout->error()==QAudio::OpenError?
+                "OpenError":audioout->error()==QAudio::IOError?
+                "IOError":audioout->error()==QAudio::UnderrunError?
+                "UnderrunError":"FatalError");
             qDebug()<<audioout->error();
             audioout->stop();
             delete audioout;
@@ -837,10 +853,10 @@ void Widget::timeout()
         m++;
         if(m >= MAXPOINTCNT)break;
     }
-    node tmp{0,0};
+    node tmp{0,0,0};
     for(int i=0;i<m-1;i++){
         for(int j=i;j<m;j++){
-            if(max[i].key > max[j].key){
+            if(max[i].key < max[j].key){
                 tmp = max[j];
                 max[j] = max[i];
                 max[i] = tmp;

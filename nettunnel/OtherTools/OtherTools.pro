@@ -1,5 +1,7 @@
 QT       += core gui
 QT       += sql network
+#QT       += qml quick
+QT       += quickwidgets
 win32: QT += axcontainer
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -71,7 +73,14 @@ message($$QMAKE_POST_LINK)
 
 SOURCES += \
     codeeditor/codeeditor.cpp \
+    codeeditor/codeedittestw.cpp \
     codeeditor/highlighter.cpp \
+    graphics/graphicswidget.cpp \
+    graphics/tmitem.cpp \
+    graphics/tmsecne.cpp \
+    graphics/tmview.cpp \
+    listw/listmodel.cpp \
+    listw/listw.cpp \
     main.cpp \
     publicip/publicip.cpp \
     shouyin/shouyinw.cpp \
@@ -83,7 +92,14 @@ SOURCES += \
 
 HEADERS += \
     codeeditor/codeeditor.h \
+    codeeditor/codeedittestw.h \
     codeeditor/highlighter.h \
+    graphics/graphicswidget.h \
+    graphics/tmitem.h \
+    graphics/tmsecne.h \
+    graphics/tmview.h \
+    listw/listmodel.h \
+    listw/listw.h \
     publicip/publicip.h \
     shouyin/shouyinw.h \
     sql/sql_engine.h \
@@ -94,6 +110,7 @@ HEADERS += \
     widget.h
 
 FORMS += \
+    codeeditor/codeedittestw.ui \
     shouyin/shouyinw.ui \
     weatherwidget.ui \
     widget.ui
@@ -113,3 +130,6 @@ win32 {
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+RESOURCES += \
+    resource.qrc

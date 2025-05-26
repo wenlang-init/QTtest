@@ -162,23 +162,23 @@ int main(int argc, char *argv[])
     // }
     // setLogPrint(1);
 
-    QString reads;
-    QFile f("zhtopy.txt");
-    if(f.open(QIODevice::ReadOnly)){
-        reads = f.readAll();
-        f.close();
-    }
-    QFile fw("./f.txt");
-    if(fw.open(QIODevice::WriteOnly)){
-        QStringList strl = reads.split(" ");
-        for(int i=0;i<strl.size();i++){
-            if(i > 0 && i%10 == 0){
-                fw.write("\n\t");
-            }
-            fw.write((QString("\"%1\",").arg(strl[i])).toUtf8());
-        }
-        fw.close();
-    }
+    // QString reads;
+    // QFile f("zhtopy.txt");
+    // if(f.open(QIODevice::ReadOnly)){
+    //     reads = f.readAll();
+    //     f.close();
+    // }
+    // QFile fw("./f.txt");
+    // if(fw.open(QIODevice::WriteOnly)){
+    //     QStringList strl = reads.split(" ");
+    //     for(int i=0;i<strl.size();i++){
+    //         if(i > 0 && i%10 == 0){
+    //             fw.write("\n\t");
+    //         }
+    //         fw.write((QString("\"%1\",").arg(strl[i])).toUtf8());
+    //     }
+    //     fw.close();
+    // }
 
     Widget w;
     w.show();

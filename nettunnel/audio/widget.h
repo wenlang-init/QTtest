@@ -49,6 +49,8 @@ protected slots:
 signals:
     void readData(QByteArray data,QAudioFormat format);
     void clearData();
+
+    void writeData(QByteArray &data);
 private slots:
     void on_pushButtonadd_clicked();
 

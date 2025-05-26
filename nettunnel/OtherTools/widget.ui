@@ -48,6 +48,10 @@
        </property>
       </widget>
      </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QPushButton" name="pushButton_2">
        <property name="text">
@@ -59,6 +63,27 @@
       <widget class="QPushButton" name="pushButton_3">
        <property name="text">
         <string>兽音</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButtonqml">
+       <property name="text">
+        <string>qml</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButtonqmllist">
+       <property name="text">
+        <string>list</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButtongraphics">
+       <property name="text">
+        <string>graphics</string>
        </property>
       </widget>
      </item>

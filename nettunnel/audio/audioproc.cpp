@@ -1,5 +1,6 @@
 #include "audioproc.h"
 #include <QDebug>
+#include <QtEndian>
 
 AudioProc::AudioProc(QObject *parent)
     : QObject{parent}
@@ -93,6 +94,8 @@ void AudioProc::processData(QByteArray &data,const QAudioFormat &format)
         for(qsizetype i=0;i<data.size();i+=4){
             timeData.keyVec.append(index);
             timeData.valVec.append(*(float*)&data[i]);
+            //timeData.valVec.append(qFromBigEndian(*(float*)&data[i]));
+            //timeData.valVec.append(qFromLittleEndian(*(float*)&data[i]));
         }
         break;
     default:
@@ -146,7 +149,7 @@ void AudioProc::processData(QByteArray &data,const QAudioFormat &format)
     node tmp{0,0};
     for(int i=0;i<m-1;i++){
         for(int j=i;j<m;j++){
-            if(max[i].key > max[j].key){
+            if(max[i].key < max[j].key){
                 tmp = max[j];
                 max[j] = max[i];
                 max[i] = tmp;

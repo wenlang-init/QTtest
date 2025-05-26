@@ -4,7 +4,7 @@
 // 解决重定义struct timespec
 #define HAVE_STRUCT_TIMESPEC
 //#pragma comment(lib,"${PWD}/Pre-built.2/lib/x64/WpthreadVC2.lib")
-#pragma comment(lib,"D:/work/QT/network/nettunnel/library/printFunction/Pre-built.2/lib/x64/pthreadVC2.lib")
+#pragma comment(lib,"D:/work/QT/network/QTtest/nettunnel/library/printFunction/Pre-built.2/lib/x64/pthreadVC2.lib")
 //#pragma comment(lib,"D:/work/QT/network/nettunnel/library/printFunction/Pre-built.2/lib/x64/libpthreadGC2.a")
 #endif
 
