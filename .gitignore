@@ -7,3 +7,4 @@ server/build
 *.user
 AIDialog
 nettunnel/shellbuild/linux-x64/build
+server/server.pro.user
