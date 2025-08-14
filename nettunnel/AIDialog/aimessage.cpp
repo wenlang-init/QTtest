@@ -8,6 +8,7 @@
 AiMessage::AiMessage(QObject *parent)
     : QObject{parent}
 {
+    qdebug << QSslSocket::sslLibraryBuildVersionString();
     initNetwork();
 }
 
@@ -35,6 +36,7 @@ void AiMessage::queryBalance(QString toke)
 void AiMessage::initNetwork()
 {
     manager = new QNetworkAccessManager(this);
+    qdebug << manager->supportedSchemes();
     // connect(manager, &QNetworkAccessManager::finished,this, [=](QNetworkReply *reply){
     //     qdebug << reply->size() << reply->url();
     //     // QString data = reply->readAll();

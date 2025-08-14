@@ -6,10 +6,11 @@
 #include "baseMacroDefine.h"
 
 #if defined(_WIN32) || defined(_WIN64)
-#include <windows.h>
+# include <windows.h>
 
 BOOL WINAPI HandlerRoutine(DWORD dwCtrlType) {
-    DEBUG_PRINT_LOG("vvvvvvvvvvvxxxxxxxxxxxxxx %d\n",dwCtrlType);
+    DEBUG_PRINT_LOG("vvvvvvvvvvvxxxxxxxxxxxxxx %d\n", dwCtrlType);
+
     // switch (dwCtrlType)
     // {
     // case CTRL_C_EVENT: //CTRL + C
@@ -31,49 +32,56 @@ BOOL WINAPI HandlerRoutine(DWORD dwCtrlType) {
     return 0;
 }
 
-#else
+#else // if defined(_WIN32) || defined(_WIN64)
 
-#include <stdio.h>
-#include <signal.h>
-#include <stdlib.h>
-//#include <unistd.h>
+# include <stdio.h>
+# include <signal.h>
+# include <stdlib.h>
+
+// #include <unistd.h>
 // _exit(0)
 
 void handle_signal(int sig)
 {
-    INFO_LOG("wait log finish. systemsig=%d\n",sig);
+    INFO_LOG("wait log finish. systemsig=%d\n", sig);
     destinyLog();
     INFO_PRINT_LOG("write log finish. while exit\n");
     exit(0);
 }
 
 void initexitDetection() {
-    signal(SIGHUP,handle_signal); // 1
-    signal(SIGINT,handle_signal); // 2 interrupt,在Linux中体现为CTRL+C
-    signal(SIGQUIT,handle_signal); // 3
-    //signal(SIGKILL,handle_signal); // 9
-    signal(SIGTERM,handle_signal); // 15
+    signal(SIGHUP,  handle_signal); // 1
+    signal(SIGINT,  handle_signal); // 2 interrupt,在Linux中体现为CTRL+C
+    signal(SIGQUIT, handle_signal); // 3
+    // signal(SIGKILL,handle_signal); // 9
+    signal(SIGTERM, handle_signal); // 15
 }
-#endif
+
+#endif // if defined(_WIN32) || defined(_WIN64)
 
 void ExitRoutine1(void) {
     DEBUG_PRINT_LOG("while exit\n");
 }
+
 void ExitRoutine2(void) {
     DEBUG_PRINT_LOG("exit\n");
 }
 
-void exitAT(){
-    //注册顺序和执行顺序相反
+void exitAT() {
+    // 注册顺序和执行顺序相反
     // 对于ctrl+c之类的不起作用，只有exit()或关闭窗口时才会起作用
     atexit(ExitRoutine2);
     atexit(ExitRoutine1);
-    //exit(0);
+
+    // exit(0);
 }
 
-void customMsgHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+void customMsgHandler(QtMsgType                 type,
+                      const QMessageLogContext& context,
+                      const QString           & msg)
 {
     QString tempMsg;
+
     if (context.file && QString::fromStdString(context.file).contains("qrc:/"))
     {
         tempMsg += "qmlLog ";
@@ -84,74 +92,131 @@ void customMsgHandler(QtMsgType type, const QMessageLogContext &context, const Q
         return;
     }
 
-    //tempMsg += QString("%1:%2:%3 %4").arg(context.file, context.function, QString::number(context.line), msg.toLocal8Bit().constData());
+    // tempMsg += QString("%1:%2:%3 %4").arg(context.file, context.function,
+    // QString::number(context.line), msg.toLocal8Bit().constData());
     tempMsg += msg;
 
     switch (type)
     {
     case QtDebugMsg:
-        //writeLognone(LOG_TYPE_ENUM_DEBUG,tempMsg.toLocal8Bit().constData());
-        //DEBUG_LOG_FFL(context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
-        writeLogformat(LOG_TYPE_ENUM_DEBUG,context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
-        //printDebugMsg(LOG_TYPE_ENUM_DEBUG,context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
+
+        // writeLognone(LOG_TYPE_ENUM_DEBUG,tempMsg.toLocal8Bit().constData());
+        // DEBUG_LOG_FFL(context.function,context.file, context.line,"%s\n",
+        // tempMsg.toLocal8Bit().constData());
+        writeLogformat(LOG_TYPE_ENUM_DEBUG,
+                       context.function,
+                       context.file,
+                       context.line,
+                       "%s\n",
+                       tempMsg.toLocal8Bit().constData());
+
+        // printDebugMsg(LOG_TYPE_ENUM_DEBUG,context.function,context.file,
+        // context.line,"%s\n", tempMsg.toLocal8Bit().constData());
         break;
+
     case QtInfoMsg:
-        writeLognone(LOG_TYPE_ENUM_INFO,tempMsg.toLocal8Bit().constData());
-        //INFO_LOG_FFL(context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
-        writeLogformat(LOG_TYPE_ENUM_INFO,context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
-        //printDebugMsg(LOG_TYPE_ENUM_INFO,context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
+        writeLognone(LOG_TYPE_ENUM_INFO, tempMsg.toLocal8Bit().constData());
+
+        // INFO_LOG_FFL(context.function,context.file, context.line,"%s\n",
+        // tempMsg.toLocal8Bit().constData());
+        writeLogformat(LOG_TYPE_ENUM_INFO,
+                       context.function,
+                       context.file,
+                       context.line,
+                       "%s\n",
+                       tempMsg.toLocal8Bit().constData());
+
+        // printDebugMsg(LOG_TYPE_ENUM_INFO,context.function,context.file,
+        // context.line,"%s\n", tempMsg.toLocal8Bit().constData());
         break;
+
     case QtWarningMsg:
-        //writeLognone(LOG_TYPE_ENUM_WARRING,tempMsg.toLocal8Bit().constData());
-        //WARRING_LOG_FFL(context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
-        writeLogformat(LOG_TYPE_ENUM_WARRING,context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
-        //printDebugMsg(LOG_TYPE_ENUM_WARRING,context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
+
+        // writeLognone(LOG_TYPE_ENUM_WARRING,tempMsg.toLocal8Bit().constData());
+        // WARRING_LOG_FFL(context.function,context.file, context.line,"%s\n",
+        // tempMsg.toLocal8Bit().constData());
+        writeLogformat(LOG_TYPE_ENUM_WARRING,
+                       context.function,
+                       context.file,
+                       context.line,
+                       "%s\n",
+                       tempMsg.toLocal8Bit().constData());
+
+        // printDebugMsg(LOG_TYPE_ENUM_WARRING,context.function,context.file,
+        // context.line,"%s\n", tempMsg.toLocal8Bit().constData());
         break;
+
     case QtCriticalMsg:
-        //CRITICAL_LOG_FFL(context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
-        writeLogformat(LOG_TYPE_ENUM_CRITICAL,context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
-        //printDebugMsg(LOG_TYPE_ENUM_CRITICAL,context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
+
+        // CRITICAL_LOG_FFL(context.function,context.file, context.line,"%s\n",
+        // tempMsg.toLocal8Bit().constData());
+        writeLogformat(LOG_TYPE_ENUM_CRITICAL,
+                       context.function,
+                       context.file,
+                       context.line,
+                       "%s\n",
+                       tempMsg.toLocal8Bit().constData());
+
+        // printDebugMsg(LOG_TYPE_ENUM_CRITICAL,context.function,context.file,
+        // context.line,"%s\n", tempMsg.toLocal8Bit().constData());
         break;
+
     case QtFatalMsg:
-        //writeLognone(LOG_TYPE_ENUM_FATAL,tempMsg.toLocal8Bit().constData());
-        //FATAL_LOG_FFL(context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
-        writeLogformat(LOG_TYPE_ENUM_FATAL,context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
-        //printDebugMsg(LOG_TYPE_ENUM_FATAL,context.function,context.file, context.line,"%s\n", tempMsg.toLocal8Bit().constData());
+
+        // writeLognone(LOG_TYPE_ENUM_FATAL,tempMsg.toLocal8Bit().constData());
+        // FATAL_LOG_FFL(context.function,context.file, context.line,"%s\n",
+        // tempMsg.toLocal8Bit().constData());
+        writeLogformat(LOG_TYPE_ENUM_FATAL,
+                       context.function,
+                       context.file,
+                       context.line,
+                       "%s\n",
+                       tempMsg.toLocal8Bit().constData());
+
+    // printDebugMsg(LOG_TYPE_ENUM_FATAL,context.function,context.file,
+    // context.line,"%s\n", tempMsg.toLocal8Bit().constData());
     default:
         break;
     }
 }
+
 #include <QFile>
 int main(int argc, char *argv[])
 {
-    //REDIRECT_QTMESSAGE(nullptr);
-    //REDIRECT_QTMESSAGE(customMsgHandler);
+    // REDIRECT_QTMESSAGE(nullptr);
+    // REDIRECT_QTMESSAGE(customMsgHandler);
     REDIRECT_QTMESSAGE_LOG(nullptr);
 
 #if defined(_WIN32) || defined(_WIN64)
-    //第二个参数FALSE为卸载钩子
-    SetConsoleCtrlHandler(HandlerRoutine, TRUE);
-#else
-    initexitDetection();
-#endif
-    //exitAT();
 
-    qDebug()<<"ggggggggggg";
+    // 第二个参数FALSE为卸载钩子
+    SetConsoleCtrlHandler(HandlerRoutine, TRUE);
+#else // if defined(_WIN32) || defined(_WIN64)
+    initexitDetection();
+#endif // if defined(_WIN32) || defined(_WIN64)
+
+    // exitAT();
+
+    qDebug() << "ggggggggggg";
     QApplication a(argc, argv);
     qDebug() << "\e[36m" TESTSTRING "\e[0m";
-    printColour(YELLOW,"hahahahahahaha\n");
-    printColour(BOLDRED,"ffffffffffff\n");
-    //WRITE_LOG(LOG_TYPE_ENUM_WARRING,"%s","cccccccccccccccccccccccc");
-    qDebug("xxx---%s%%","rrrrrrrrrrrrr");qDebug().noquote()<<",,,,,,,,,,,,,,,,,";
+    printColour(YELLOW,  "hahahahahahaha\n");
+    printColour(BOLDRED, "ffffffffffff\n");
+
+    // WRITE_LOG(LOG_TYPE_ENUM_WARRING,"%s","cccccccccccccccccccccccc");
+    qDebug("xxx---%s%%", "rrrrrrrrrrrrr");
+    qDebug().noquote() << ",,,,,,,,,,,,,,,,,";
 
     QString logdir = QCoreApplication::applicationDirPath() + "/log";
-    qDebug()<<logdir<<logdir.toLocal8Bit().data();
-    initLog(logdir.toLocal8Bit().data(),600,1024*1024*10);
+    qDebug() << logdir << logdir.toLocal8Bit().data();
+    initLog(logdir.toLocal8Bit().data(), 600, 1024 * 1024 * 10);
     setLogLevel(LOG_TYPE_ENUM_DEBUG);
-    //setLogPrint(0);
-    PRINT_LOG(LOG_TYPE_ENUM_DEBUG,"ccccccccccccccccccccxxxxx");
+
+    // setLogPrint(0);
+    PRINT_LOG(LOG_TYPE_ENUM_DEBUG, "ccccccccccccccccccccxxxxx");
     INFO_PRINT_LOG("bbbbbbbbbbbbbbbbbbbb");
     INFO_LOG("ttttttttttttttttttttttttt");
+
     // setLogPrint(0);
     // for(int i=0;i<20000;i++){
     //     DEBUG_LOG("a %d\n",i);
@@ -184,7 +249,7 @@ int main(int argc, char *argv[])
     w.show();
     int ret = a.exec();
 
-    INFO_LOG("stop status=%d\n",ret);
+    INFO_LOG("stop status=%d\n", ret);
     destinyLog();
     INFO_PRINT_LOG("while exit\n");
 

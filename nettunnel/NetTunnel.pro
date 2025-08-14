@@ -9,7 +9,10 @@ SUBDIRS += \
     $$PWD/OtherTools \
     $$PWD/netStatus \
     $$PWD/AIDialog \
-    $$PWD/audio
+    $$PWD/audio \
+    video
+
+#SUBDIRS += $$PWD/test
 
 #SUBDIRS += $$PWD/ipattrc
 

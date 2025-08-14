@@ -21,7 +21,7 @@
 
 double __get_printfTime_d()
 {
-#if defined(__GNUC__)
+#if defined(__unix__) //defined(__GNUC__)
     // //#include <sys/time.h>
     // struct timeval tv;
     // gettimeofday(&tv, NULL);

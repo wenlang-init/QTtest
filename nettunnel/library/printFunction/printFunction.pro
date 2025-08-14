@@ -31,6 +31,7 @@ win32-msvc*{
     LIBS += -lpthread
 }
 CONFIG += c++17
+#QMAKE_CXXFLAGS += -D_GLIBCXX_USE_CXX11_ABI=0
 #message($$CONFIG)
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -72,7 +73,7 @@ HEADERS += \
     lognone.h \
     mArray.h \
     mList.h \
-    mlog.h \
+#    mlog.h \
     printFunction.h
 
 SOURCES += \
@@ -82,5 +83,5 @@ SOURCES += \
     lognone.c \
     mArray.c \
     mList.c \
-    mlog.cpp \
+#    mlog.cpp \
     printFunction.c
