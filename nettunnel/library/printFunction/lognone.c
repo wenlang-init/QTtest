@@ -389,6 +389,7 @@ void destinyLog()
     if(m_logObj->logFilePNameCurrent){
         free(m_logObj->logFilePNameCurrent);
     }
+    free(m_logObj);
     m_logObj = NULL;
 }
 

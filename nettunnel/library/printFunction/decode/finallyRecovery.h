@@ -77,7 +77,7 @@ static void cleanup_func_free(void **data)
  * @param name 变量名
  * @param size 分配的内存大小
  */
-#define AUTOPTRTYPENEWSIZE(type, name, size) __attribute__((cleanup(cleanup_func_free))) void *void##_name = malloc(size); type *name = (type *)void##_name
+#define AUTOPTRTYPENEWSIZE(type, name, size) __attribute__((cleanup(cleanup_func_free))) void *void_##name = malloc(size); type *name = (type *)void_##name
 
 /**
  * @brief 自动分配指定类型和数量的内存并在变量生命周期结束时自动释放
@@ -85,7 +85,7 @@ static void cleanup_func_free(void **data)
  * @param name 变量名
  * @param cnt 分配的元素数量
  */
-#define AUTOPTRTYPENEWCNT(type, name, cnt) __attribute__((cleanup(cleanup_func_free))) void *void##_name = malloc(cnt * sizeof(type)); type *name = (type *)void##_name
+#define AUTOPTRTYPENEWCNT(type, name, cnt) __attribute__((cleanup(cleanup_func_free))) void *void_##name = malloc(cnt * sizeof(type)); type *name = (type *)void_##name
 
 /**
  * @brief 定义一个自动释放的指针类型

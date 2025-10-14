@@ -70,6 +70,7 @@ HEADERS += \
     decode/beastSound.h \
     decode/finallyRecovery.h \
     decode/unicode2gbktab.h \
+    io/io.h \
     lognone.h \
     mArray.h \
     mList.h \
@@ -80,6 +81,7 @@ SOURCES += \
     decode/autf8.c \
     decode/base64.c \
     decode/beastSound.c \
+    io/io.c \
     lognone.c \
     mArray.c \
     mList.c \

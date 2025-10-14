@@ -23,7 +23,8 @@ void writeLogformat(LOG_TYPE_ENUM level,const char* function,const char *file,co
 void writeLog(LOG_TYPE_ENUM level,const char* function,const char *file,const int line,const char* data);
 void writeLognone(LOG_TYPE_ENUM level,const char* data);
 
-#define ADTA_MAXSIZE 4096
+#define ADTA_MAXSIZE 4095
+
 #define WRITE_LOG(level,__format, ...) \
     do{ \
         char buffer[ADTA_MAXSIZE + 1]; \
@@ -49,6 +50,19 @@ do{ \
 #define CRITICAL_LOG_FFL(func,file,line,__format, ...) WRITE_LOG_FFL(LOG_TYPE_ENUM_CRITICAL,func,file,line,__format,##__VA_ARGS__)
 #define FATAL_LOG_FFL(func,file,line,__format, ...)    WRITE_LOG_FFL(LOG_TYPE_ENUM_FATAL,func,file,line,__format,##__VA_ARGS__)
 #define INFO_LOG_FFL(func,file,line,__format, ...)     WRITE_LOG_FFL(LOG_TYPE_ENUM_INFO,func,file,line,__format,##__VA_ARGS__)
+
+#define WRITE_LOG_NONE(level,__format, ...) \
+do{ \
+        char buffer[ADTA_MAXSIZE + 1]; \
+        snprintf(buffer,ADTA_MAXSIZE,__format,##__VA_ARGS__); \
+        writeLognone(level,buffer); \
+}while(0)
+
+#define DEBUG_LOG_NONE(__format, ...)    WRITE_LOG_NONE(LOG_TYPE_ENUM_DEBUG,__format,##__VA_ARGS__)
+#define WARRING_LOG_NONE(__format, ...)  WRITE_LOG_NONE(LOG_TYPE_ENUM_WARRING,__format,##__VA_ARGS__)
+#define CRITICAL_LOG_NONE(__format, ...) WRITE_LOG_NONE(LOG_TYPE_ENUM_CRITICAL,__format,##__VA_ARGS__)
+#define FATAL_LOG_NONE(__format, ...)    WRITE_LOG_NONE(LOG_TYPE_ENUM_FATAL,__format,##__VA_ARGS__)
+#define INFO_LOG_NONE(__format, ...)     WRITE_LOG_NONE(LOG_TYPE_ENUM_INFO,__format,##__VA_ARGS__)
 
 #define CUSTOMMSGHANDLER_LOG \
 [](QtMsgType type, const QMessageLogContext &context, const QString &msg)\
@@ -90,10 +104,10 @@ do{ \
 
 #define REDIRECT_QTMESSAGE_LOG(handler) \
 do{\
-        if(handler){\
-            qInstallMessageHandler(handler);\
+    if(handler){\
+        qInstallMessageHandler(handler);\
     } else {\
-            qInstallMessageHandler(CUSTOMMSGHANDLER_LOG);\
+        qInstallMessageHandler(CUSTOMMSGHANDLER_LOG);\
     }\
 }while(0)
 

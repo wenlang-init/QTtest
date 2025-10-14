@@ -64,17 +64,15 @@ void printDebugMsg(LOG_TYPE_ENUM type,const char* function,const char *file,cons
  @param more-参考printf函数
  */
 #define PRINT_LOG(type,__format, ...) \
-do \
-    { \
-        printDebugMsg(type,__FUNCTION__,__FILE__, __LINE__,__format,##__VA_ARGS__); \
-    }while (0)
+do{\
+    printDebugMsg(type,__FUNCTION__,__FILE__, __LINE__,__format,##__VA_ARGS__); \
+}while (0)
 
 #define DEBUG_PRINT_LOG(__format, ...)    PRINT_LOG(LOG_TYPE_ENUM_DEBUG,__format,##__VA_ARGS__)
 #define WARRING_PRINT_LOG(__format, ...)  PRINT_LOG(LOG_TYPE_ENUM_WARRING,__format,##__VA_ARGS__)
 #define CRITICAL_PRINT_LOG(__format, ...) PRINT_LOG(LOG_TYPE_ENUM_CRITICAL,__format,##__VA_ARGS__)
 #define FATAL_PRINT_LOG(__format, ...)    PRINT_LOG(LOG_TYPE_ENUM_FATAL,__format,##__VA_ARGS__)
 #define INFO_PRINT_LOG(__format, ...)     PRINT_LOG(LOG_TYPE_ENUM_INFO,__format,##__VA_ARGS__)
-
 
 #define CUSTOMMSGHANDLER \
 [](QtMsgType type, const QMessageLogContext &context, const QString &msg)\
