@@ -8,6 +8,11 @@
 extern "C" {
 #endif
 
+// 计算变量大小，同sizeof
+// int a,b[2];sizeof_T(a);sizeof_V(a);sizeof_V(b);
+#define sizeof_T(type) ((szie_t)(type*)0 + 1)
+#define sizeof_V(type) ((szie_t)(&type+1) - (szie_t)(&type))
+
 /**
  * @brief 计算结构体成员的偏移量
  * @param type 结构体类型

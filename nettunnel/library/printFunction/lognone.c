@@ -3,7 +3,7 @@
 #ifdef _MSC_VER
 // 解决重定义struct timespec
 #define HAVE_STRUCT_TIMESPEC
-//#pragma comment(lib,"${PWD}/Pre-built.2/lib/x64/WpthreadVC2.lib")
+//#pragma comment(lib,"./Pre-built.2/lib/x64/pthreadVC2.lib")
 #pragma comment(lib,"D:/work/QT/network/QTtest/nettunnel/library/printFunction/Pre-built.2/lib/x64/pthreadVC2.lib")
 //#pragma comment(lib,"D:/work/QT/network/nettunnel/library/printFunction/Pre-built.2/lib/x64/libpthreadGC2.a")
 #endif
@@ -116,7 +116,7 @@ int create_dir(const char *path)
             if (access(dirname, 0) != 0) // F_OK = 0
             {
 #ifdef __unix__
-                mkdir(dirname, 0666);
+                mkdir(dirname, 0755);
 #else
                 _mkdir(dirname);
 #endif
@@ -443,9 +443,12 @@ void writeLog(LOG_TYPE_ENUM level, const char *function, const char *file, const
     __get_printfTime(timechr,sizeof(timechr));
     double timed = __get_printfTime_d();
 
-    if(m_printStdout){
+    if(m_printStdout == 1){
         fprintf(stdout,YELLOW "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET "%s\n",typemsg,timechr,timed, ProcessId,ThreadId,file, line,function,buffer);
         fflush(stdout);
+    } else if(m_printStdout == 2){
+        fprintf(stderr,RED "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET "%s\n",typemsg,timechr,timed, ProcessId,ThreadId,file, line,function,buffer);
+        fflush(stderr);
     }
 
     if(m_logObj){
@@ -481,42 +484,46 @@ void writeLog(LOG_TYPE_ENUM level, const char *function, const char *file, const
 
 void writeLogformat(LOG_TYPE_ENUM level,const char* function,const char *file,const int line,const char* format, ...)
 {
-    char buffer[ADTA_MAXSIZE + 1];
+    int flag = 0;
+    if(m_printStdout>0){
+        flag |= 0x1;
+    }
+    if(m_logObj){
+        if(m_logObj->level <= level){
+            flag |= 0x2;
+        }
+    }
 
-    va_list arg;
-    va_start (arg, format);
-    vsnprintf(buffer, ADTA_MAXSIZE, format, arg);
-    va_end (arg);
+    if(flag == 0){
+        return;
+    }
 
-    writeLog(level,function,file,line,buffer);
-}
-
-void writeLognone(LOG_TYPE_ENUM level,const char* data)
-{
     const char *typemsg;
+    unsigned long ProcessId = 0;
+    unsigned long ThreadId = 0;
+    char timechr[64];
+    double timed;
+
     switch (level) {
     case LOG_TYPE_ENUM_DEBUG:
-        typemsg = "Debug";
+        typemsg = "Debug   ";
         break;
     case LOG_TYPE_ENUM_WARRING:
-        typemsg = "Warring";
+        typemsg = "Warring ";
         break;
     case LOG_TYPE_ENUM_CRITICAL:
         typemsg = "Critical";
         break;
     case LOG_TYPE_ENUM_FATAL:
-        typemsg = "Fatal";
+        typemsg = "Fatal   ";
         break;
     case LOG_TYPE_ENUM_INFO:
-        typemsg = "Info";
+        typemsg = "Info    ";
         break;
     default:
-        typemsg = "";
+        typemsg = "        ";
         break;
     }
-
-    unsigned long ProcessId = 0;
-    unsigned long ThreadId = 0;
 
 #if defined(WIN32) || defined(WIN64)
     // system("color 0");
@@ -530,25 +537,207 @@ void writeLognone(LOG_TYPE_ENUM level,const char* data)
     ThreadId = syscall(SYS_gettid);
 #endif
 
-    if(m_printStdout){
-        char cur_time[64];
-        fprintf(stdout,YELLOW "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET MAGENTA "---" RESET "%s\n",typemsg,__get_printfTime(cur_time,sizeof(cur_time)),__get_printfTime_d(), ProcessId,ThreadId,data);
-        fflush(stdout);
+    __get_printfTime(timechr,sizeof(timechr));
+    timed = __get_printfTime_d();
+    if(flag & 0x1){
+        FILE *out = stdout;
+        if(m_printStdout == 2){
+            out = stderr;
+        }
+        va_list arg;
+        va_start (arg, format);
+        int size = vsnprintf(NULL,0,format,arg);
+        va_end (arg);
+        if(size >= 4096){
+            char *buffer = (char *)malloc(size+1);
+            if(!buffer){
+                printf("malloc:%s\n",strerror(errno));
+                return;
+            }
+            va_start (arg, format);
+            vsnprintf(buffer,size+1,format,arg);
+            va_end (arg);
+            fprintf(out,YELLOW "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET "%s" ,typemsg,timechr,timed, ProcessId,ThreadId,file, line,function,buffer);
+            free(buffer);
+        } else {
+            char buffer[4096];
+            va_start (arg, format);
+            vsnprintf(buffer,sizeof(buffer),format,arg);
+            va_end (arg);
+            fprintf(out,YELLOW "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET "%s" ,typemsg,timechr,timed, ProcessId,ThreadId,file, line,function,buffer);
+        }
+        fflush(out);
+
+        // fprintf(stdout,YELLOW "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET ,typemsg,timechr,timed, ProcessId,ThreadId,file, line,function);
+        // va_list arg;
+        // va_start (arg, format);
+        // vfprintf(stdout, format, arg);
+        // va_end (arg);
+        // fflush(stdout);
+    }
+
+    if(flag & 0x2){
+        char tmpbuf[1024];
+        int len = snprintf(tmpbuf,sizeof(tmpbuf)," %s(%.6lf)|(%lu:%lu) %s:%d(%s) ",timechr,timed, ProcessId,ThreadId,file,line,function);
+        if(len < 0){
+            return;
+        }
+        int typemsg_len = strlen(typemsg);
+
+        va_list arg;
+        va_start (arg, format);
+        int bufferlen = vsnprintf(NULL,0,format,arg);
+        va_end (arg);
+        if(bufferlen < 0) {
+            FATAL_PRINT_LOG("vsnprintf get length failed\n");
+            return;
+        }
+
+        int datalen = len + typemsg_len + bufferlen + 1;
+        char *data = (char *)malloc(datalen);
+
+        if(data){
+            memcpy(data,typemsg,typemsg_len+1);
+            strcat(data,tmpbuf);
+
+            va_start (arg, format);
+            int ret = vsnprintf(data+len+typemsg_len,bufferlen+1,format,arg);
+            va_end (arg);
+
+            pthread_mutex_lock(&m_logObj->mutex);
+            m_logObj->logList->func.append(m_logObj->logList,data);
+            pthread_mutex_unlock(&m_logObj->mutex);
+        }
+    }
+}
+
+void writeLograwdata(LOG_TYPE_ENUM level,const char* function,const char *file,const int line,const char* buffer)
+{
+    if(m_printStdout > 0){
+        const char *typemsg;
+        switch (level) {
+        case LOG_TYPE_ENUM_DEBUG:
+            typemsg = "Debug   ";
+            break;
+        case LOG_TYPE_ENUM_WARRING:
+            typemsg = "Warring ";
+            break;
+        case LOG_TYPE_ENUM_CRITICAL:
+            typemsg = "Critical";
+            break;
+        case LOG_TYPE_ENUM_FATAL:
+            typemsg = "Fatal   ";
+            break;
+        case LOG_TYPE_ENUM_INFO:
+            typemsg = "Info    ";
+            break;
+        default:
+            typemsg = "        ";
+            break;
+        }
+
+        unsigned long ProcessId = 0;
+        unsigned long ThreadId = 0;
+
+    #if defined(WIN32) || defined(WIN64)
+        // system("color 0");
+        ProcessId = GetCurrentProcessId();
+        ThreadId = GetCurrentThreadId();
+    #endif
+
+    #if defined(__unix__)
+        ProcessId = getpid();
+        //ThreadId = gettid();
+        ThreadId = syscall(SYS_gettid);
+    #endif
+
+        char timechr[64];
+        __get_printfTime(timechr,sizeof(timechr));
+        double timed = __get_printfTime_d();
+
+        if(m_printStdout == 1){
+            fprintf(stdout,YELLOW "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET "%s\n",typemsg,timechr,timed, ProcessId,ThreadId,file, line,function,buffer);
+            fflush(stdout);
+        } else if(m_printStdout == 2){
+            fprintf(stderr,RED "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET "%s\n",typemsg,timechr,timed, ProcessId,ThreadId,file, line,function,buffer);
+            fflush(stderr);
+        }
     }
 
     if(m_logObj){
         if(m_logObj->level <= level){
-            int data_len = strlen(data);
-            int typemsg_len = strlen(typemsg);
-            char *ndata = (char *)malloc(data_len + typemsg_len + 20);
-            if(ndata){
-                memcpy(ndata,typemsg,typemsg_len+1);
-                strcat(ndata,data);
+            int buffer_len = strlen(buffer);
+            char *data = (char *)malloc(buffer_len + 1);
+            if(data){
+                memcpy(data,buffer,buffer_len+1);
 
                 pthread_mutex_lock(&m_logObj->mutex);
-                m_logObj->logList->func.append(m_logObj->logList,ndata);
+                //DEBUG_PRINT_LOG("logList->ro.count=%d\n",m_logObj->logList->ro.count);
+                m_logObj->logList->func.append(m_logObj->logList,data);
+                //DEBUG_PRINT_LOG("logList->ro.count=%d\n",m_logObj->logList->ro.count);
                 pthread_mutex_unlock(&m_logObj->mutex);
             }
+        }
+    }
+}
+
+void writeLogdata(LOG_TYPE_ENUM level,const char* function,const char *file,const int line,const char* buffer)
+{
+    if(m_printStdout>0){
+        const char *typemsg;
+        switch (level) {
+        case LOG_TYPE_ENUM_DEBUG:
+            typemsg = "Debug   ";
+            break;
+        case LOG_TYPE_ENUM_WARRING:
+            typemsg = "Warring ";
+            break;
+        case LOG_TYPE_ENUM_CRITICAL:
+            typemsg = "Critical";
+            break;
+        case LOG_TYPE_ENUM_FATAL:
+            typemsg = "Fatal   ";
+            break;
+        case LOG_TYPE_ENUM_INFO:
+            typemsg = "Info    ";
+            break;
+        default:
+            typemsg = "        ";
+            break;
+        }
+
+        unsigned long ProcessId = 0;
+        unsigned long ThreadId = 0;
+#if defined(WIN32) || defined(WIN64)
+        // system("color 0");
+        ProcessId = GetCurrentProcessId();
+        ThreadId = GetCurrentThreadId();
+#endif
+#if defined(__unix__)
+        ProcessId = getpid();
+        //ThreadId = gettid();
+        ThreadId = syscall(SYS_gettid);
+#endif
+        char timechr[64];
+        __get_printfTime(timechr,sizeof(timechr));
+        double timed = __get_printfTime_d();
+        if(m_printStdout == 1){
+            fprintf(stdout,YELLOW "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET "%s\n",typemsg,timechr,timed, ProcessId,ThreadId,file, line,function,buffer);
+            fflush(stdout);
+        } else if(m_printStdout == 2){
+            fprintf(stderr,RED "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET "%s\n",typemsg,timechr,timed, ProcessId,ThreadId,file, line,function,buffer);
+            fflush(stderr);
+        }
+    }
+
+    if(m_logObj){
+        if(m_logObj->level <= level){
+          int len = strlen(buffer)+1;
+          char *data = (char *)malloc(len);
+          memcpy(data,buffer,len);
+          pthread_mutex_lock(&m_logObj->mutex);
+          m_logObj->logList->func.append(m_logObj->logList,data);
+          pthread_mutex_unlock(&m_logObj->mutex);
         }
     }
 }

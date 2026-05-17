@@ -106,17 +106,32 @@ Item {
             Flickable {
                 id:flickable
                 anchors.fill: parent
+                anchors.centerIn: parent
+                //width: parent.width-100
+                //height: parent.height
                 //ScrollBar.vertical: ScrollBar{}
                 clip: true
-                contentWidth: parent.width > textother.contentWidth ? parent.width : textother.contentWidth
-                contentHeight: parent.height > textother.contentHeight ? parent.height : textother.contentHeight
+                contentWidth: width > textother.contentWidth ? width : textother.contentWidth
+                contentHeight: height > textother.contentHeight ? height : textother.contentHeight
 
+                // Text {
+                //     id:textother
+                //     color: "#111111"
+                //     //text: ""
+                //     anchors.fill: parent
+                //     horizontalAlignment: Text.AlignHCenter
+                //     verticalAlignment: Text.AlignVCenter
+                //     font.bold: true
+                //     transformOrigin: Item.Center
+                //     wrapMode: TextArea .Wrap // 换行
+                // }
                 TextArea {
                     id:textother
                     //readOnly: true
                     enabled: false
                     //clip: true
                     //cursorVisible: true
+                    //opacity: 0.5
                     anchors.fill: parent
                     wrapMode: TextArea .Wrap // 换行
                     font.bold: true

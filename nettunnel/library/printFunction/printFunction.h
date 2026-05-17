@@ -57,7 +57,8 @@ const char *__get_printfTime(char *cur_time,int size);
 
 void printColour(const char *color,const char *data);
 void printDebugMsg(LOG_TYPE_ENUM type,const char* function,const char *file,const int line,const char* format, ...);
-
+int  getFormatSize(const char* format, ...);
+int  getFormatString(char **d,const char* format, ...);
 /**
  @brief 打印输出
  @param type-为对应的级别

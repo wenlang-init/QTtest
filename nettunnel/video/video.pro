@@ -31,6 +31,7 @@ CONFIG(debug,debug|release){
     } else {
         LIBS += -L$$DESTDIRBASE/release/lib -lprintFunction
     }
+    win32-msvc*{}else{LIBS += -lpthread}
 }
 INCLUDEPATH += $$PWD/../library/printFunction
 

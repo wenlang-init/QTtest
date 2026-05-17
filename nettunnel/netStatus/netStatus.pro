@@ -28,9 +28,11 @@ CONFIG(debug,debug|release){
         LIBS += -L$$DESTDIRBASE/release/lib -lprintFunction_arm64-v8a
     } else {
         LIBS += -L$$DESTDIRBASE/release/lib -lnettunnel
+        #LIBS += -Wl,--start-group -L$$DESTDIRBASE/release/lib -lprintFunction --end-group
         LIBS += -L$$DESTDIRBASE/release/lib -lprintFunction
     }
     #LIBS += $$DESTDIRBASE/release/lib/libnettunnel.a
+    win32-msvc*{}else{LIBS += -lpthread}
 }
 INCLUDEPATH += $$PWD/../library/nettunnel
 INCLUDEPATH += $$PWD/../library/printFunction

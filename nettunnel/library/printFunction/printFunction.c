@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #if defined(WIN32) || defined(WIN64)
 #include <windows.h>
@@ -86,31 +87,31 @@ void printColour(const char *color,const char *data)
 
 void printDebugMsg(LOG_TYPE_ENUM type,const char* function,const char *file,const int line,const char* format, ...)
 {
-    #define ADTA_MAXSIZE 4096
-    char buffer[ADTA_MAXSIZE + 1]={0};
-    va_list arg;
-    va_start (arg, format);
-    vsnprintf(buffer, ADTA_MAXSIZE, format, arg);
-    va_end (arg);
+    // #define ADTA_MAXSIZE 4096
+    // char buffer[ADTA_MAXSIZE + 1]={0};
+    // va_list arg;
+    // va_start (arg, format);
+    // vsnprintf(buffer, ADTA_MAXSIZE, format, arg);
+    // va_end (arg);
     static const char *typemsg = "";
     switch (type) {
     case LOG_TYPE_ENUM_DEBUG:
-        typemsg = "Debug";
+        typemsg = "Debug   ";
         break;
     case LOG_TYPE_ENUM_WARRING:
-        typemsg = "Warring";
+        typemsg = "Warring ";
         break;
     case LOG_TYPE_ENUM_CRITICAL:
         typemsg = "Critical";
         break;
     case LOG_TYPE_ENUM_FATAL:
-        typemsg = "Fatal";
+        typemsg = "Fatal   ";
         break;
     case LOG_TYPE_ENUM_INFO:
-        typemsg = "Info";
+        typemsg = "Info    ";
         break;
     default:
-        typemsg = "";
+        typemsg = "        ";
         break;
     }
 
@@ -136,6 +137,73 @@ void printDebugMsg(LOG_TYPE_ENUM type,const char* function,const char *file,cons
 #endif
 
     char cur_time[64];
-    fprintf(out,YELLOW "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET "%s\n",typemsg,__get_printfTime(cur_time,sizeof(cur_time)),__get_printfTime_d(), ProcessId,ThreadId,file, line,function,buffer);
+    va_list arg;
+    va_start (arg, format);
+    int size = vsnprintf(NULL,0,format,arg);
+    va_end (arg);
+
+    if(size >= 4096){
+        char *buffer = (char *)malloc(size+1);
+        if(!buffer){
+            printf("malloc:%s\n",strerror(errno));
+            return;
+        }
+        va_start (arg, format);
+        vsnprintf(buffer,size+1,format,arg);
+        va_end (arg);
+        fprintf(out,YELLOW "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET "%s\n",typemsg,__get_printfTime(cur_time,sizeof(cur_time)),__get_printfTime_d(), ProcessId,ThreadId,file, line,function,buffer);
+        free(buffer);
+    } else {
+        char buffer[4096];
+        va_start (arg, format);
+        vsnprintf(buffer,sizeof(buffer),format,arg);
+        va_end (arg);
+        fprintf(out,YELLOW "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET "%s\n",typemsg,__get_printfTime(cur_time,sizeof(cur_time)),__get_printfTime_d(), ProcessId,ThreadId,file, line,function,buffer);
+    }
+
+    // fprintf(out,YELLOW "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET ,typemsg,__get_printfTime(cur_time,sizeof(cur_time)),__get_printfTime_d(), ProcessId,ThreadId,file, line,function);
+    // va_list arg;
+    // va_start (arg, format);
+    // vfprintf(out, format, arg);
+    // va_end (arg);
+    //fprintf(out,YELLOW "%s:" GREEN "time:%s(%.6lf)" BOLDBLACK "|" RESET BOLDYELLOW "PId:%lu" BOLDBLUE "Tid:%lu" BOLDBLACK "|" RESET CYAN "%s:%d" BLUE "(%s)" MAGENTA "---" RESET "%s\n",typemsg,__get_printfTime(cur_time,sizeof(cur_time)),__get_printfTime_d(), ProcessId,ThreadId,file, line,function,buffer);
     fflush(out);
+}
+
+int  getFormatSize(const char* format, ...){
+    int len = -1;
+    va_list arg;
+    va_start (arg, format);
+    int size = vsnprintf(NULL,0,format,arg);
+    va_end (arg);
+    if(size > 0){
+        len = size+1;
+    }
+    return len;
+}
+
+int getFormatString(char **d,const char* format, ...)
+{
+    int len = -1;
+    if(d == NULL){
+        return len;
+    }
+    va_list arg;
+    va_start (arg, format);
+    char *buffer = NULL;
+    int size = vsnprintf(NULL,0,format,arg);
+    va_end (arg);
+    if(size > 0){
+        len = size+1;
+        buffer = (char*)malloc(len);
+        if(buffer){
+            va_start (arg, format);
+            vsnprintf(buffer,len,format,arg);
+            va_end (arg);
+        } else {
+            len = -1;
+        }
+    }
+    *d = buffer;
+    return len;
 }

@@ -5,6 +5,10 @@
 #include "lognone.h"
 #include "baseMacroDefine.h"
 
+#ifdef Q_OS_WINDOWS
+# include "ffmpegtest.h"
+#endif // ifdef Q_OS_WINDOWS
+
 #if defined(_WIN32) || defined(_WIN64)
 # include <windows.h>
 
@@ -115,7 +119,6 @@ void customMsgHandler(QtMsgType                 type,
         break;
 
     case QtInfoMsg:
-        writeLognone(LOG_TYPE_ENUM_INFO, tempMsg.toLocal8Bit().constData());
 
         // INFO_LOG_FFL(context.function,context.file, context.line,"%s\n",
         // tempMsg.toLocal8Bit().constData());
@@ -244,7 +247,9 @@ int main(int argc, char *argv[])
     //     }
     //     fw.close();
     // }
-
+#ifdef Q_OS_WINDOWS
+    ffmpegTest ft;
+#endif // ifdef Q_OS_WINDOWS
     Widget w;
     w.show();
     int ret = a.exec();

@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/Background.png</file>
+        <file>src/qmlList/list.qml</file>
+        <file>src/layout/resource/fontawesome-free-6.7.2-desktop/otfs/Font Awesome 6 Free-Solid-900.otf</file>
+        <file>src/layout/resource/android.ico</file>
+        <file>src/layout/resource/pic/01.jpg</file>
+        <file>src/layout/resource/pic/02.jpg</file>
+        <file>src/layout/resource/pic/avatar.png</file>
+    </qresource>
+</RCC>

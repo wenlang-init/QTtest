@@ -1,6 +1,6 @@
 #include "qmlinturn.h"
 
-//#include <QApplication>
+// #include <QApplication>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -9,13 +9,14 @@
 int main(int argc, char *argv[])
 {
     REDIRECT_QTMESSAGE(nullptr);
-    //QApplication a(argc, argv);
-    //Widget w;
-    //w.show();
+
+    // QApplication a(argc, argv);
+    // Widget w;
+    // w.show();
 
     QGuiApplication app(argc, argv);
 
-    // https://blog.csdn.net/jiang173707/article/details/121653637
+    // https://www.cnblogs.com/linuxAndMcu/p/11961090.html
     // qmlRegisterType<QmlInTurn>("QmlInTurn",1, 0, "QmlInTurn");
     // import QmlInTurn 1.0
 
@@ -25,14 +26,14 @@ int main(int argc, char *argv[])
         &engine,
         &QQmlApplicationEngine::objectCreated,
         &app,
-        [url](QObject *obj, const QUrl &objUrl) {
-            if (!obj && url == objUrl)
-                QCoreApplication::exit(-1);
-        },
+        [url](QObject *obj, const QUrl& objUrl) {
+        if (!obj && (url == objUrl)) QCoreApplication::exit(-1);
+    },
         Qt::QueuedConnection);
     QmlInTurn qmlInTurn;
-    engine.rootContext()->setContextProperty("qmlInTurn",&qmlInTurn);
-    //engine.addImportPath("qrc:/");
+    engine.rootContext()->setContextProperty("qmlInTurn", &qmlInTurn);
+
+    // engine.addImportPath("qrc:/");
     engine.load(url);
 
     return app.exec();

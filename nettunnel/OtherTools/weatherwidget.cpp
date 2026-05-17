@@ -17,12 +17,35 @@ WeatherWidget::WeatherWidget(QWidget *parent)
     //     file.close();
     // }
 
-    QStringList allCity = Weather::getInstance().getAllCity();
-    ui->comboBox->addItems(allCity);
-    ui->comboBox->setCurrentText("成都");
+    connect(ui->comboBox, &QComboBox::currentTextChanged, this,
+            [ = ](const QString& text) {
+        QStringList subCityList =
+            Weather::getInstance().getAllsubCityName(text);
+        ui->comboBox_2->clear();
+        ui->comboBox_2->addItems(subCityList);
 
-    // 设置可编辑
-    ui->comboBox->setEditable(true);
+        if (subCityList.size() > 0) {
+            ui->comboBox_2->setCurrentIndex(0);
+        }
+    });
+    connect(ui->comboBox_2, &QComboBox::currentTextChanged, this,
+            [ = ](const QString& text) {
+        QStringList locationList =
+            Weather::getInstance().getAlllocationName(ui->comboBox->currentText(),
+                                                      text);
+        ui->comboBox_3->clear();
+        ui->comboBox_3->addItems(locationList);
+
+        if (locationList.size() > 0) {
+            ui->comboBox_3->setCurrentIndex(0);
+        }
+    });
+    QStringList allCity = Weather::getInstance().getAllCityName();
+    ui->comboBox->addItems(allCity);
+    ui->comboBox->setCurrentIndex(0);
+
+    // 设置不可编辑
+    ui->comboBox->setEditable(false);
 
     // 自动补全实例的构建
     QCompleter *comp = new QCompleter(allCity, ui->comboBox);
@@ -44,10 +67,14 @@ WeatherWidget::WeatherWidget(QWidget *parent)
         qdebug << errormessage;
         ui->labelinfo->setText(errormessage);
 
+        m_winfo = winfo;
+
         if (errormessage == "查询完成") {
             isok = true;
-            m_winfo = winfo;
             on_pushButtonhome_clicked();
+        } else {
+            isok = false;
+            ui->plainTextEdit->clear();
         }
     });
 }
@@ -60,7 +87,10 @@ WeatherWidget::~WeatherWidget()
 void WeatherWidget::on_pushButton_clicked()
 {
     QString city = ui->comboBox->currentText();
-    bool    info = Weather::getInstance().queryWeather(city);
+    bool    info = Weather::getInstance().queryWeather(
+        ui->comboBox_3->currentText(),
+        ui->comboBox_2->currentText(),
+        ui->comboBox->currentText());
 
     if (!info) {
         ui->labelinfo->setText(QString("未发现城市：%1").arg(city));
