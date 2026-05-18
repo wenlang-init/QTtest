@@ -7,10 +7,5 @@ server/build
 *.user
 AIDialog
 nettunnel/shellbuild/linux-x64/build
-server/server.pro.user
-server/server.pro.user
 example/example/build
 example/example/build/.qtcreator
-
-
-server/server.pro.user
