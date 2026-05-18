@@ -5,6 +5,7 @@
 #include <QString>
 #include <QTranslator>
 #include "lognone.h"
+#include "QBreakpadHandler.h"
 
 // #include "cxxlog.h"
 
@@ -194,6 +195,11 @@ int main(int argc, char *argv[])
 #endif // if defined(_WIN32) || defined(_WIN64)
 
     QApplication a(argc, argv);
+
+    // dump 路径
+    QBreakpadInstance.setDumpPath("./qbreakpad_dump");
+
+    // MainWindow *aaa = nullptr; aaa->show();
 
     // CxxLog::getInstance().initLog("log", 1000, 1024 * 1024 * 10);
     // CxxLog::getInstance().setFileLogLevel(CxxLog::LOG_TYPE_DEBUG);

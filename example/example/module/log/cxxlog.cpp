@@ -3,7 +3,9 @@
 #include <filesystem>
 #include <chrono>
 #include <stdarg.h>
-#include <string.h>
+
+// #include <string.h>
+#include <string>
 #include <errno.h>
 #include <vector>
 #include <algorithm>

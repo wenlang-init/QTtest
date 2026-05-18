@@ -55,6 +55,8 @@ set(layoutsources
 set(MODULE_SOURCES
     src/sql_engine.cpp
     src/sql_engine.h
+    src/cpu/funchelper.cpp
+    src/cpu/funchelper.h
     ${mwsources}
     ${videosources}
     ${graphicssources}
@@ -165,6 +167,8 @@ target_link_libraries(${PROJECT_NAME}
         log
         plot
         decodepublic
+        qbreakpads
+        #breakpads
 )
 
 include(GNUInstallDirs)
@@ -182,3 +186,4 @@ add_subdirectory(module/log)
 add_subdirectory(module/plot)
 add_subdirectory(module/decode)
 #add_subdirectory(module/Mqtt)
+add_subdirectory(module/qbreakpad)
