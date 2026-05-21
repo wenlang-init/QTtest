@@ -19,18 +19,25 @@ set(PLOT_SOURCES
     Xxw/XxwTracer.h
 )
 
+# 静态库
 add_library(${PROJECT_NAME} ${PLOT_SOURCES})
 
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS core PrintSupport)
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::PrintSupport)
 
 target_include_directories(${PROJECT_NAME}
+    # PRIVATE：仅当前目标使用
+    # PUBLIC：当前目标及依赖它的目标都可用
+    # INTERFACE：当前目标不使用，但依赖它的目标可用
     INTERFACE
         ${PROJECT_SOURCE_DIR}/Xxw
 )
 
-include(GNUInstallDirs)
+#include(GNUInstallDirs)
 install(TARGETS ${PROJECT_NAME}
+    # ARCHIVE :静态库路径
+    # LIBRARY：共享库路径
+    # RUNTIME：运行时路径
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/static
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

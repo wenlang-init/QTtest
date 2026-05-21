@@ -138,9 +138,27 @@ static void printMessage(const CxxLog::LOG_TYPE& logType,
     std::chrono::nanoseconds ns =
         std::chrono::duration_cast<std::chrono::nanoseconds>(
             now.time_since_epoch()) % 1000000000;
+    std::string strms = std::to_string(ns.count() / 1000000);
+
+    if (strms.size() < 3) {
+        strms = std::string(3 - strms.size(), '0') + strms;
+    }
+    std::string strcs = std::to_string(ns.count() / 1000 % 1000);
+
+    if (strcs.size() < 3) {
+        strcs = std::string(3 - strcs.size(), '0') + strcs;
+    }
+    std::string strns = std::to_string(ns.count() % 1000);
+
+    if (strns.size() < 3) {
+        strns = std::string(3 - strns.size(), '0') + strns;
+    }
     char dateStr[128];
     std::strftime(dateStr, sizeof(dateStr), "%Y%m%d_%H:%M:%S", now_tm);
-    str = str + GREEN + dateStr + "." + std::to_string(ns.count()) + RESET;
+    str = str +  GREEN +
+          dateStr + "." + strms +
+          "." + strcs +
+          "." + strns + RESET;
     str = str + "(" + BOLDYELLOW + std::to_string(ProcessId) + ":" + BOLDBLUE +
           std::to_string(ThreadId) + ")" + RESET;
     str = str + CYAN + file + ":" + std::to_string(line) + BLUE +
@@ -185,16 +203,19 @@ bool CxxLog::initLog(const std::string & logDir,
 
     std::replace(m_logDir.begin(), m_logDir.end(), '\\', '/');
 
-    if ((m_logDir.size() == 0) ||
-        (m_logDir[m_logDir.size() - 1] != '/')) {
-        m_logDir = m_logDir + "/";
+    if (m_logDir.size() == 0) {
+        m_logDir = m_logDir + "./";
+    }
 
-        if (!std::filesystem::exists(m_logDir)) {
-            if (!std::filesystem::create_directory(m_logDir)) {
-                // std::cout << "create dir failed:" << m_logDir << std::endl;
-                FATAL_PRINT("create dir failed:%s\n", m_logDir.c_str());
-                return false;
-            }
+    if (m_logDir[m_logDir.size() - 1] != '/') {
+        m_logDir = m_logDir + "/";
+    }
+
+    if (!std::filesystem::exists(m_logDir)) {
+        if (!std::filesystem::create_directory(m_logDir)) {
+            // std::cout << "create dir failed:" << m_logDir << std::endl;
+            FATAL_PRINT("create dir failed:%s\n", m_logDir.c_str());
+            return false;
         }
     }
 
@@ -245,7 +266,7 @@ bool CxxLog::initLog(const std::string & logDir,
     isInit = true;
 
     // std::cout << "init Log success:" << m_currentLogFile << std::endl;
-    FATAL_PRINT("init Log success:\n", m_currentLogFile.c_str());
+    INFO_PRINT("init Log success:%s\n", m_currentLogFile.c_str());
     return true;
 }
 
@@ -341,32 +362,32 @@ void CxxLog::addLog(const LOG_TYPE   & logType,
 
     switch (logType) {
     case LOG_TYPE_DEBUG:
-        typemsg = "Debug   ";
+        typemsg = "Debug    ";
         str = str + YELLOW;
         break;
 
     case LOG_TYPE_WARRING:
-        typemsg = "Warring ";
+        typemsg = "Warring  ";
         str = str + CYAN;
         break;
 
     case LOG_TYPE_CRITICAL:
-        typemsg = "Critical";
+        typemsg = "Critical ";
         str = str + RED;
         break;
 
     case LOG_TYPE_FATAL:
-        typemsg = "Fatal   ";
+        typemsg = "Fatal    ";
         str = str + MAGENTA;
         break;
 
     case LOG_TYPE_INFO:
-        typemsg = "Info    ";
+        typemsg = "Info     ";
         str = str + GREEN;
         break;
 
     default:
-        typemsg = "        ";
+        typemsg = "         ";
         break;
     }
     str = str + typemsg;
@@ -400,8 +421,26 @@ void CxxLog::addLog(const LOG_TYPE   & logType,
     std::strftime(dateStr, sizeof(dateStr), "%Y%m%d_%H:%M:%S", now_tm);
 
     if (m_isPrinting && (logType >= m_logLevel)) {
+        std::string strms = std::to_string(ns.count() / 1000000);
+
+        if (strms.size() < 3) {
+            strms = std::string(3 - strms.size(), '0') + strms;
+        }
+        std::string strcs = std::to_string(ns.count() / 1000 % 1000);
+
+        if (strcs.size() < 3) {
+            strcs = std::string(3 - strcs.size(), '0') + strcs;
+        }
+        std::string strns = std::to_string(ns.count() % 1000);
+
+        if (strns.size() < 3) {
+            strns = std::string(3 - strns.size(), '0') + strns;
+        }
         str = str +  GREEN +
-              dateStr + "." + std::to_string(ns.count()) +
+              dateStr +
+              "." + strms +
+              "." + strcs +
+              "." + strns +
               BOLDBLACK + "|" + RESET;
         str = str + BOLDYELLOW + std::to_string(ProcessId) + ":" +
               BOLDBLUE + std::to_string(ThreadId) +

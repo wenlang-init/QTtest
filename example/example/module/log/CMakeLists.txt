@@ -12,6 +12,11 @@ project(log LANGUAGES C CXX)
 file(GLOB LOG_SOURCE CONFIGURE_DEPENDS *.c *.h *.cpp printf/*.c printf/*.h)
 
 add_library(log ${LOG_SOURCE})
+# 动态库
+# add_library(${PROJECT_NAME}_shared
+#     SHARED
+#     ${PLOT_SOURCES}
+# )
 
 #message(STATUS "log source: ${PROJECT_SOURCE_DIR}/Pre-built.2/include")
 # pthread库
@@ -62,7 +67,7 @@ target_include_directories(${PROJECT_NAME}
         ${PROJECT_SOURCE_DIR}
 )
 
-include(GNUInstallDirs)
+#include(GNUInstallDirs)
 install(TARGETS log
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/static
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

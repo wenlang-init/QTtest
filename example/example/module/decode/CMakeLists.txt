@@ -21,7 +21,7 @@ target_include_directories(${PROJECT_NAME}
         ${PROJECT_SOURCE_DIR}
 )
 
-include(GNUInstallDirs)
+#include(GNUInstallDirs)
 install(TARGETS ${PROJECT_NAME}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/static
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

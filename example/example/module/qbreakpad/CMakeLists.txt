@@ -27,7 +27,7 @@ target_include_directories(${PROJECT_NAME}
         ${PROJECT_SOURCE_DIR}/handler
         ${PROJECT_SOURCE_DIR}/handler/singletone
 )
-include(GNUInstallDirs)
+#include(GNUInstallDirs)
 install(TARGETS ${PROJECT_NAME}
     # ARCHIVE :静态库文件；LIBRARY：共享库文件；RUNTIME：可执行文件
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/static

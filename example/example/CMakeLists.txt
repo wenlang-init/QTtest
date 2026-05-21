@@ -98,6 +98,19 @@ qt_add_executable(example
     ${APP_RESOURCES}
 )
 
+# 动态库
+# add_library(${PROJECT_NAME}_shared
+#     SHARED
+#     ${PROJECT_SOURCES}
+#     ${APP_RESOURCES}
+# )
+
+# 静态库
+# add_library(${PROJECT_NAME}_static
+#     ${PROJECT_SOURCES}
+#     ${APP_RESOURCES}
+# )
+
 # ==========================
 # QML 模块
 # ==========================
@@ -171,12 +184,29 @@ target_link_libraries(${PROJECT_NAME}
         #breakpads
 )
 
-include(GNUInstallDirs)
+#include(GNUInstallDirs)
 install(TARGETS ${PROJECT_NAME}
     BUNDLE DESTINATION .
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/static
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# CMake 中安装路径通常基于「前缀路径」（CMAKE_INSTALL_PREFIX），默认值为：
+# Linux/macOS：/usr/local
+# Windows：C:/Program Files/<项目名>
+# 可通过以下方式修改前缀路径：
+# 命令行配置时指定：cmake -DCMAKE_INSTALL_PREFIX=/opt/myapp ..
+# CMakeLists 中设置：set(CMAKE_INSTALL_PREFIX "/opt/myapp")
+
+# CMAKE_INSTALL_BINDIR	可执行文件路径	bin
+# CMAKE_INSTALL_LIBDIR	库文件路径	lib（64 位可能为 lib64）
+# CMAKE_INSTALL_INCLUDEDIR	头文件路径	include
+# CMAKE_INSTALL_DATADIR	数据文件路径（如文档、配置）	share
+# CMAKE_INSTALL_MANDIR	手册页路径	share/man
+# message(STATUS "CMAKE_INSTALL_PREFIX:" ${CMAKE_INSTALL_PREFIX})
+# message(STATUS "CONFIGURATIONS:" ${CONFIGURATIONS})
+# message(STATUS "DESTINATION:" ${DESTINATION})
 
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(${PROJECT_NAME})
