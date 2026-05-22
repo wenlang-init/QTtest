@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(BREAKPAD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/breakpad/src)
 
 if (UNIX)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../)
     file(GLOB BREAKPADS_SRC_LIST
         ${BREAKPAD_PATH}/client/minidump_file_writer.cc
         ${BREAKPAD_PATH}/common/convert_UTF.cc

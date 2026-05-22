@@ -1,7 +1,7 @@
 #include "memorypool.h"
 #include <stdlib.h>
-//#include <error.h>
-//#include <errno.h>
+#include <string.h>
+#include <errno.h>
 #include "printFunction.h"
 
 MemoryPoolObj *initMemoryPool(unsigned long blockNumberStep,

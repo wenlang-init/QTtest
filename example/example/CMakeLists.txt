@@ -180,9 +180,15 @@ target_link_libraries(${PROJECT_NAME}
         log
         plot
         decodepublic
-        qbreakpads
-        #breakpads
 )
+
+if(NOT ANDROID)
+    target_link_libraries(${PROJECT_NAME}
+        PUBLIC
+            qbreakpads
+            #breakpads
+    )
+endif()
 
 #include(GNUInstallDirs)
 install(TARGETS ${PROJECT_NAME}
@@ -215,5 +221,7 @@ endif()
 add_subdirectory(module/log)
 add_subdirectory(module/plot)
 add_subdirectory(module/decode)
-#add_subdirectory(module/Mqtt)
-add_subdirectory(module/qbreakpad)
+# add_subdirectory(module/Mqtt)
+if(NOT ANDROID)
+    add_subdirectory(module/qbreakpad)
+endif()

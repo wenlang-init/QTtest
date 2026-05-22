@@ -10,7 +10,7 @@
 // #include <QMqttClient>
 #include "src/sql_engine.h"
 
-// #define TTTT
+#define TTTT
 #ifdef TTTT
 # include "src/messageWidget/listmessageview.h"
 # include "src/video/videowidget.h"

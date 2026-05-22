@@ -4,89 +4,18 @@
 #include <QLocale>
 #include <QString>
 #include <QTranslator>
-#include "lognone.h"
-#include "QBreakpadHandler.h"
 
-// #include "cxxlog.h"
-
-void customMsgHandler(QtMsgType                 type,
-                      const QMessageLogContext& context,
-                      const QString           & msg)
-{
-    QString tempMsg;
-
-    if (context.file && QString::fromStdString(context.file).contains("qrc:/"))
-    {
-        tempMsg += "qmlLog ";
-    }
-
-    if (msg.contains("TypeError") && msg.contains("sRowHeight"))
-    {
-        return;
-    }
-    tempMsg += msg;
-    CRITICAL_PRINT_LOG("%s-%s-%d:%s\n",
-                       context.function,
-                       context.file,
-                       context.line,
-                       tempMsg.toLocal8Bit().constData());
-
-    switch (type)
-    {
-    case QtDebugMsg:
-        writeLogformat(LOG_TYPE_ENUM_DEBUG,
-                       context.function,
-                       context.file,
-                       context.line,
-                       "%s\n",
-                       tempMsg.toLocal8Bit().constData());
-        break;
-
-    case QtInfoMsg:
-        writeLogformat(LOG_TYPE_ENUM_INFO,
-                       context.function,
-                       context.file,
-                       context.line,
-                       "%s\n",
-                       tempMsg.toLocal8Bit().constData());
-        break;
-
-    case QtWarningMsg:
-        writeLogformat(LOG_TYPE_ENUM_WARRING,
-                       context.function,
-                       context.file,
-                       context.line,
-                       "%s\n",
-                       tempMsg.toLocal8Bit().constData());
-        break;
-
-    case QtCriticalMsg:
-        writeLogformat(LOG_TYPE_ENUM_CRITICAL,
-                       context.function,
-                       context.file,
-                       context.line,
-                       "%s\n",
-                       tempMsg.toLocal8Bit().constData());
-        break;
-
-    case QtFatalMsg:
-        writeLogformat(LOG_TYPE_ENUM_FATAL,
-                       context.function,
-                       context.file,
-                       context.line,
-                       "%s\n",
-                       tempMsg.toLocal8Bit().constData());
-
-    default:
-        break;
-    }
-}
+// #include "lognone.h"
+#if !defined(Q_OS_ANDROID)
+# include "QBreakpadHandler.h"
+#endif // if !defined(Q_OS_ANDROID)
+#include "cxxlog.h"
 
 #if defined(_WIN32) || defined(_WIN64)
 # include <windows.h>
 
 BOOL WINAPI HandlerRoutine(DWORD dwCtrlType) {
-    DEBUG_PRINT_LOG("vvvvvvvvvvvxxxxxxxxxxxxxx %d\n", dwCtrlType);
+    DEBUG_LOG_CXX("vvvvvvvvvvvxxxxxxxxxxxxxx %d\n", dwCtrlType);
 
     switch (dwCtrlType)
     {
@@ -141,11 +70,11 @@ void initexitDetection() {
 #endif // if defined(_WIN32) || defined(_WIN64)
 
 void ExitRoutine1(void) {
-    DEBUG_PRINT_LOG("while exit\n");
+    INFO_LOG_CXX("while exit\n");
 }
 
 void ExitRoutine2(void) {
-    DEBUG_PRINT_LOG("exit\n");
+    INFO_LOG_CXX("exit\n");
 }
 
 void exitAT() {
@@ -159,12 +88,13 @@ void exitAT() {
 
 int main(int argc, char *argv[])
 {
-    REDIRECT_QTMESSAGE_LOG(nullptr);
+    // REDIRECT_QTMESSAGE_LOG(nullptr);
+    REDIRECT_QTMESSAGE_LOG_CXX(nullptr);
 #if defined(_WIN32) || defined(_WIN64)
 
     // 第二个参数FALSE为卸载钩子
     if (!SetConsoleCtrlHandler(HandlerRoutine, TRUE)) {
-        FATAL_PRINT_LOG("Error: Could not set control handler.\n");
+        FATAL_LOG_CXX("Error: Could not set control handler.\n");
 
         DWORD  errorCode = GetLastError();
         LPWSTR messageBuffer = nullptr;
@@ -179,13 +109,13 @@ int main(int argc, char *argv[])
             );
 
         if (size) {
-            FATAL_PRINT_LOG("22222222222222222 %d:%s\n",
-                            errorCode,
-                            QString::fromUtf16(
-                                (const char16_t *)messageBuffer).toLocal8Bit().constData());
+            FATAL_LOG_CXX("22222222222222222 %d:%s\n",
+                          errorCode,
+                          QString::fromUtf16(
+                              (const char16_t *)messageBuffer).toLocal8Bit().constData());
             LocalFree(messageBuffer);
         } else {
-            FATAL_PRINT_LOG("33333333333333333 %d\n", errorCode);
+            FATAL_LOG_CXX("33333333333333333 %d\n", errorCode);
         }
     }
 
@@ -195,16 +125,25 @@ int main(int argc, char *argv[])
 #endif // if defined(_WIN32) || defined(_WIN64)
 
     QApplication a(argc, argv);
+#if !defined(Q_OS_ANDROID)
 
     // dump 路径
     QBreakpadInstance.setDumpPath("./qbreakpad_dump");
+#endif // if !defined(Q_OS_ANDROID)
 
     // MainWindow *aaa = nullptr; aaa->show();
 
-    // CxxLog::getInstance().initLog("log", 1000, 1024 * 1024 * 10);
-    // CxxLog::getInstance().setFileLogLevel(CxxLog::LOG_TYPE_DEBUG);
-    // CxxLog::getInstance().setFileLogLevel(CxxLog::LOG_TYPE_DEBUG);
-    // CxxLog::getInstance().setPrint(true);
+    QString logdir = QCoreApplication::applicationDirPath() + "/log";
+    qDebug() << logdir << logdir.toLocal8Bit().data();
+
+    CxxLog::getInstance().initLog(logdir.toLocal8Bit().toStdString(),
+                                  1000,
+                                  1024 * 1024 * 10);
+    CxxLog::getInstance().setFileLogLevel(CxxLog::LOG_TYPE_DEBUG);
+    CxxLog::getInstance().setFileLogLevel(CxxLog::LOG_TYPE_DEBUG);
+    CxxLog::getInstance().setPrint(true);
+    CxxLog::getInstance().setColorLog(true);
+
     // DEBUG_LOG_CXX_STRING(std::string("xxxxxxxxxxxx1xxxxxxxxxxx\n"));
     // WARRING_LOG_CXX_STRING(std::string("xxxxxxxxxx2xxxxxxxxxxxxx\n"));
     // CRITICAL_LOG_CXX_STRING(std::string("xxxxxxxxx3xxxxxxxxxxxxxx\n"));
@@ -221,15 +160,14 @@ int main(int argc, char *argv[])
     //     INFO_PRINT_LOG("11111111111111111111 %s\n", buf);
     // }
 
-    QString logdir = QCoreApplication::applicationDirPath() + "/log";
-    qDebug() << logdir << logdir.toLocal8Bit().data();
-    initLog(logdir.toLocal8Bit().data(), 1000, 1024 * 1024 * 10);
-    setLogLevel(LOG_TYPE_ENUM_DEBUG);
 
-    // setLogPrint(0);
-    PRINT_LOG(LOG_TYPE_ENUM_DEBUG, "ccccccccccccccccccccxxxxx\n");
-    INFO_PRINT_LOG("bbbbbbbbbbbbbbbbbbbb\n");
-    INFO_LOG("ttttttttttttttttttttttttt\n");
+    // initLog(logdir.toLocal8Bit().data(), 1000, 1024 * 1024 * 10);
+    // setLogLevel(LOG_TYPE_ENUM_DEBUG);
+
+    // // setLogPrint(0);
+    // PRINT_LOG(LOG_TYPE_ENUM_DEBUG, "ccccccccccccccccccccxxxxx\n");
+    // INFO_PRINT_LOG("bbbbbbbbbbbbbbbbbbbb\n");
+    // INFO_LOG("ttttttttttttttttttttttttt\n");
 
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();
@@ -247,9 +185,11 @@ int main(int argc, char *argv[])
 
     int ret = a.exec();
 
-    INFO_LOG("stop status=%d\n", ret);
-    destinyLog();
-    INFO_PRINT_LOG("while exit\n");
+    // INFO_LOG("stop status=%d\n", ret);
+    // destinyLog();
+    // INFO_PRINT_LOG("while exit\n");
+
+    INFO_LOG_CXX("stop status=%d\n", ret);
 
     return ret; // QCoreApplication::exec();
 }

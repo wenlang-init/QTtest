@@ -43,6 +43,10 @@ public:
         m_isPrinting = isPrinting;
     }
 
+    void setColorLog(bool isColorLog) {
+        m_isColorLog = isColorLog;
+    }
+
     void addLog(const LOG_TYPE   & logType,
                 const char        *function,
                 const char        *file,
@@ -71,6 +75,7 @@ private:
     bool m_isPrinting = true;                         // 是否打印日志
     LOG_TYPE m_logLevel = LOG_TYPE_DEBUG;             // 日志输出级别
     LOG_TYPE m_fileLogLevel = LOG_TYPE_DEBUG;         // 日志文件保存级别
+    bool m_isColorLog = false;                        // 是否使用彩色日志
 
     unsigned int m_flushMs = 1000;                    // 日志保存刷新周期
     unsigned int m_fileLogMaxSize = 10 * 1024 * 1024; // 日志文件大小
@@ -133,51 +138,54 @@ private:
         {                                                                      \
             tempMsg += "qmlLog ";                                              \
         }                                                                      \
-                                                                               \
-        if (msg.contains("TypeError") && msg.contains("sRowHeight"))           \
-        {                                                                      \
-            return;                                                            \
-        }                                                                      \
-                                                                               \
-        tempMsg += msg;                                                        \
-                                                                               \
+        tempMsg += msg + "\n";                                                 \
         switch (type)                                                          \
         {                                                                      \
         case QtDebugMsg:                                                       \
-            CxxLog::getInstance().addlog(CxxLog::LOG_TYPE_DEBUG,               \
-                                         __FUNCTION__,                         \
-                                         __FILE__,                             \
-                                         __LINE__,                             \
+        {                                                                      \
+            CxxLog::getInstance().addLog(CxxLog::LOG_TYPE_DEBUG,               \
+                                         context.function,                     \
+                                         context.file,                         \
+                                         context.line,                         \
                                          tempMsg.toLocal8Bit().constData());   \
             break;                                                             \
+        }                                                                      \
         case QtInfoMsg:                                                        \
-            CxxLog::getInstance().addlog(CxxLog::LOG_TYPE_INFO,                \
-                                         __FUNCTION__,                         \
-                                         __FILE__,                             \
-                                         __LINE__,                             \
+        {                                                                      \
+            CxxLog::getInstance().addLog(CxxLog::LOG_TYPE_INFO,                \
+                                         context.function,                     \
+                                         context.file,                         \
+                                         context.line,                         \
                                          tempMsg.toLocal8Bit().constData());   \
             break;                                                             \
+        }                                                                      \
         case QtWarningMsg:                                                     \
-            CxxLog::getInstance().addlog(CxxLog::LOG_TYPE_WARRING,             \
-                                         __FUNCTION__,                         \
-                                         __FILE__,                             \
-                                         __LINE__,                             \
+        {                                                                      \
+            CxxLog::getInstance().addLog(CxxLog::LOG_TYPE_WARRING,             \
+                                         context.function,                     \
+                                         context.file,                         \
+                                         context.line,                         \
                                          tempMsg.toLocal8Bit().constData());   \
             break;                                                             \
+        }                                                                      \
         case QtCriticalMsg:                                                    \
-            CxxLog::getInstance().addlog(CxxLog::LOG_TYPE_CRITICAL,            \
-                                         __FUNCTION__,                         \
-                                         __FILE__,                             \
-                                         __LINE__,                             \
+        {                                                                      \
+            CxxLog::getInstance().addLog(CxxLog::LOG_TYPE_CRITICAL,            \
+                                         context.function,                     \
+                                         context.file,                         \
+                                         context.line,                         \
                                          tempMsg.toLocal8Bit().constData());   \
             break;                                                             \
+        }                                                                      \
         case QtFatalMsg:                                                       \
-            CxxLog::getInstance().addlog(CxxLog::LOG_TYPE_FATAL,               \
-                                         __FUNCTION__,                         \
-                                         __FILE__,                             \
-                                         __LINE__,                             \
+        {                                                                      \
+            CxxLog::getInstance().addLog(CxxLog::LOG_TYPE_FATAL,               \
+                                         context.function,                     \
+                                         context.file,                         \
+                                         context.line,                         \
                                          tempMsg.toLocal8Bit().constData());   \
             break;                                                             \
+        }                                                                      \
         default:                                                               \
             break;                                                             \
         }                                                                      \

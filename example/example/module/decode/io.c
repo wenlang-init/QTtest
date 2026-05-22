@@ -1,5 +1,4 @@
 #ifdef __linux__
-#include "../printFunction.h"
 #include <sys/ioctl.h>
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
@@ -19,7 +18,7 @@ int setI2CData(const char *i2cDevName,unsigned char addr,unsigned char *buf,int 
   i2c.msgs = msgs;
   fd = open(i2cDevName,O_RDWR); // /dev/i2c-2
   if(fd < 0){
-    DEBUG_PRINT_LOG("open %s error:%s\n",i2cDevName,strerror(errno));
+    printf("open %s error:%s\n",i2cDevName,strerror(errno));
     return -1;
   }
   ioctl(fd,I2C_TIMEOUT,1); // 超时时间
@@ -35,7 +34,7 @@ int setI2CData(const char *i2cDevName,unsigned char addr,unsigned char *buf,int 
   //memset(i2c.msgs[1].buf,0,i2c.msgs[1].len);
   int ret = ioctl(fd,I2C_RDWR,(unsigned long)&i2c); // 读写i2c
   if(ret < 0){
-    DEBUG_PRINT_LOG("ioctl:%s\n",strerror(errno));
+    printf("ioctl:%s\n",strerror(errno));
     close(fd);
     return -2;
   }
@@ -52,7 +51,7 @@ int getI2CData(const char *i2cDevName,unsigned short base_addr,unsigned char add
   i2c.msgs = msgs;
   fd = open(i2cDevName,O_RDWR); // /dev/i2c-2
   if(fd < 0){
-    DEBUG_PRINT_LOG("open %s error:%s\n",i2cDevName,strerror(errno));
+    printf("open %s error:%s\n",i2cDevName,strerror(errno));
     return -1;
   }
   ioctl(fd,I2C_TIMEOUT,1); // 超时时间
@@ -75,13 +74,13 @@ int getI2CData(const char *i2cDevName,unsigned short base_addr,unsigned char add
   //memset(i2c.msgs[1].buf,0,i2c.msgs[1].len);
   int ret = ioctl(fd,I2C_RDWR,(unsigned long)&i2c); // 读写i2c
   if(ret < 0){
-    DEBUG_PRINT_LOG("ioctl:%s\n",strerror(errno));
+    printf("ioctl:%s\n",strerror(errno));
     close(fd);
     return -2;
   }
 
 #if 1
-  DEBUG_PRINT_LOG("read:base=0x%02x,addr=%d,len=%d,value=",base_addr,i2c.msgs[0].buf[0]&0xff,i2c.msgs[1].len);
+  printf("read:base=0x%02x,addr=%d,len=%d,value=",base_addr,i2c.msgs[0].buf[0]&0xff,i2c.msgs[1].len);
   printf("\nrow\\column\t0\t1\t2\t3\t4\t5\t6\t7\t8\t9\tA\tB\tC\tD\tE\tF");
   for(ret=0;ret<i2c.msgs[1].len;ret++){
       if(ret % 16 == 0){
@@ -107,12 +106,12 @@ int gpioExport(unsigned int gpio)
   int fd = open(SYSFS_GPIO_DIR "/export", O_WRONLY);
   if (fd < 0)
   {
-    DEBUG_PRINT_LOG("open:%s\n",strerror(errno));
+    printf("open:%s\n",strerror(errno));
     return fd;
   }
   int len = snprintf(buf, sizeof(buf), "%d", gpio);
   if(0 >= write(fd, buf, len)){
-    DEBUG_PRINT_LOG("write:%s\n",strerror(errno));
+    printf("write:%s\n",strerror(errno));
     close(fd);
     return -1;
   }
@@ -126,12 +125,12 @@ int gpioUnexport(unsigned int gpio)
   int fd = open(SYSFS_GPIO_DIR "/unexport", O_WRONLY);
   if (fd < 0)
   {
-    DEBUG_PRINT_LOG("open:%s\n",strerror(errno));
+    printf("open:%s\n",strerror(errno));
     return fd;
   }
   int len = snprintf(buf, sizeof(buf), "%d", gpio);
   if(0 >= write(fd, buf, len)){
-    DEBUG_PRINT_LOG("write:%s\n",strerror(errno));
+    printf("write:%s\n",strerror(errno));
     close(fd);
     return -1;
   }
@@ -146,18 +145,18 @@ int gpioSetDirection(unsigned int gpio,int Direction)
   int fd = open(buf, O_WRONLY);
   if (fd < 0)
   {
-    DEBUG_PRINT_LOG("open:%s\n",strerror(errno));
+    printf("open:%s\n",strerror(errno));
     return fd;
   }
   if(Direction == 0){
     if(0 >= write(fd, "out", 4)){
-      DEBUG_PRINT_LOG("write:%s\n",strerror(errno));
+      printf("write:%s\n",strerror(errno));
       close(fd);
       return -1;
     }
   } else {
     if(0 >= write(fd, "in", 3)){
-      DEBUG_PRINT_LOG("write:%s\n",strerror(errno));
+      printf("write:%s\n",strerror(errno));
       close(fd);
       return -1;
     }
@@ -174,12 +173,12 @@ int gpioSetValue(unsigned int gpio,int value)
   int fd = open(buf, O_WRONLY);
   if (fd < 0)
   {
-    DEBUG_PRINT_LOG("open:%s\n",strerror(errno));
+    printf("open:%s\n",strerror(errno));
     return fd;
   }
   snprintf(buf, sizeof(buf), "%d", value);
   if(0 >= write(fd, buf, strlen(buf))){
-    DEBUG_PRINT_LOG("write:%s\n",strerror(errno));
+    printf("write:%s\n",strerror(errno));
     close(fd);
     return -1;
   }
@@ -195,12 +194,12 @@ int gpioGetValue(unsigned int gpio,int *value)
   int fd = open(buf, O_RDONLY);
   if (fd < 0)
   {
-    DEBUG_PRINT_LOG("open:%s\n",strerror(errno));
+    printf("open:%s\n",strerror(errno));
     return fd;
   }
   char c;
   if(0 >= read(fd,&c,1)){
-    DEBUG_PRINT_LOG("read:%s\n",strerror(errno));
+    printf("read:%s\n",strerror(errno));
     close(fd);
     return -1;
   }
@@ -219,11 +218,11 @@ int gpioSetEdge(unsigned int gpio, char *edge)
   int fd = open(buf, O_WRONLY);
   if (fd < 0)
   {
-    DEBUG_PRINT_LOG("open:%s\n",strerror(errno));
+    printf("open:%s\n",strerror(errno));
     return fd;
   }
   if(0 >= write(fd, edge, strlen(edge) + 1)){
-    DEBUG_PRINT_LOG("write:%s\n",strerror(errno));
+    printf("write:%s\n",strerror(errno));
     close(fd);
   }
   close(fd);

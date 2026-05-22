@@ -161,9 +161,10 @@ static void printMessage(const CxxLog::LOG_TYPE& logType,
           "." + strns + RESET;
     str = str + "(" + BOLDYELLOW + std::to_string(ProcessId) + ":" + BOLDBLUE +
           std::to_string(ThreadId) + ")" + RESET;
-    str = str + CYAN + file + ":" + std::to_string(line) + BLUE +
+    str = str + CYAN + file + ":" BOLDYELLOW + std::to_string(line) + BLUE +
           "(" + function + ") " + RESET;
-    std::cout << str << vec.data() << std::endl;
+    std::cout << str << vec.data(); // << std::endl;
+    std::cout.flush();
 }
 
 // 输出msg信息，并带上时间戳、文件名、行号、函数名等信息
@@ -204,7 +205,7 @@ bool CxxLog::initLog(const std::string & logDir,
     std::replace(m_logDir.begin(), m_logDir.end(), '\\', '/');
 
     if (m_logDir.size() == 0) {
-        m_logDir = m_logDir + "./";
+        m_logDir = m_logDir + "./log/";
     }
 
     if (m_logDir[m_logDir.size() - 1] != '/') {
@@ -353,44 +354,51 @@ void CxxLog::logThreadFunc()
 }
 
 void CxxLog::addLog(const LOG_TYPE   & logType,
-                    const char        *function,
-                    const char        *file,
+                    const char        *_function,
+                    const char        *_file,
                     const int          line,
                     const std::string& logMessage) {
     const char *typemsg;
+    const char *function = const_cast<const char *>(_function);
+    const char *file = _file;
+
+    if (function == nullptr) function = (char *)"null";
+
+    if (file == nullptr) file = (char *)"null";
     std::string str;
+    std::string strcolor;
 
     switch (logType) {
     case LOG_TYPE_DEBUG:
         typemsg = "Debug    ";
-        str = str + YELLOW;
+        strcolor = strcolor + YELLOW;
         break;
 
     case LOG_TYPE_WARRING:
         typemsg = "Warring  ";
-        str = str + CYAN;
+        strcolor = strcolor + CYAN;
         break;
 
     case LOG_TYPE_CRITICAL:
         typemsg = "Critical ";
-        str = str + RED;
+        strcolor = strcolor + RED;
         break;
 
     case LOG_TYPE_FATAL:
         typemsg = "Fatal    ";
-        str = str + MAGENTA;
+        strcolor = strcolor + MAGENTA;
         break;
 
     case LOG_TYPE_INFO:
         typemsg = "Info     ";
-        str = str + GREEN;
+        strcolor = strcolor + GREEN;
         break;
 
     default:
         typemsg = "         ";
         break;
     }
-    str = str + typemsg;
+    str = strcolor + typemsg;
 
     // auto ThreadId = std::this_thread::get_id();
     unsigned long ProcessId = 0;
@@ -441,34 +449,69 @@ void CxxLog::addLog(const LOG_TYPE   & logType,
               "." + strms +
               "." + strcs +
               "." + strns +
-              BOLDBLACK + "|" + RESET;
-        str = str + BOLDYELLOW + std::to_string(ProcessId) + ":" +
-              BOLDBLUE + std::to_string(ThreadId) +
+              BOLDBLACK "|" RESET;
+        str = str + BOLDYELLOW + std::to_string(ProcessId) +
+              ":" BOLDBLUE + std::to_string(ThreadId) +
               BOLDBLACK "|" RESET;
 
-        str = str + CYAN + file + ":" + std::to_string(line) +
-              BLUE "(" + function + ")" + MAGENTA + "---" + RESET;
+        str = str + CYAN + file + ":" BOLDYELLOW + std::to_string(line) +
+              BLUE "(" + function + ")"  MAGENTA  "---"  RESET;
         str = str + logMessage;
 
-        std::cout << str << std::endl;
+        std::cout << str; // << std::endl;
+        std::cout.flush();
     }
 
     if (isInit && (logType >= m_fileLogLevel)) {
-#ifndef USE_COLOR_LOG
+        std::string strms = std::to_string(ns.count() / 1000000);
+
+        if (strms.size() < 3) {
+            strms = std::string(3 - strms.size(), '0') + strms;
+        }
+        std::string strcs = std::to_string(ns.count() / 1000 % 1000);
+
+        if (strcs.size() < 3) {
+            strcs = std::string(3 - strcs.size(), '0') + strcs;
+        }
+        std::string strns = std::to_string(ns.count() % 1000);
+
+        if (strns.size() < 3) {
+            strns = std::string(3 - strns.size(), '0') + strns;
+        }
+
+        str.clear();
         std::string filename(file);
         std::size_t found = filename.find_last_of("/\\");
 
-        // std::cout << "路径: " << filename.substr(0, found) << '\n';
-        // std::cout << "文件: " << filename.substr(found + 1) << '\n';
-        str.clear();
-        str = str + typemsg + dateStr + "." + std::to_string(ns.count()) +
-              "|" + std::to_string(ProcessId) + ":" + std::to_string(ThreadId) +
-              "|";
-
-        str = str + filename.substr(found + 1) + ":" + std::to_string(line) +
-              "(" + function + ")"  + "---";
+        if (m_isColorLog) {
+            str = strcolor + typemsg +  GREEN +
+                  dateStr +
+                  "." + strms +
+                  "." + strcs +
+                  "." + strns +
+                  BOLDBLACK "|" RESET;
+            str = str + BOLDYELLOW + std::to_string(ProcessId) +
+                  ":" BOLDBLUE + std::to_string(ThreadId) +
+                  BOLDBLACK "|" RESET;
+            str = str + CYAN +
+                  filename.substr(found + 1) +
+                  ":" BOLDYELLOW + std::to_string(line) +
+                  BLUE "(" + function + ")" MAGENTA "---" RESET;
+        } else {
+            str = str + typemsg +
+                  dateStr +
+                  "." + strms +
+                  "." + strcs +
+                  "." + strns +
+                  "|";
+            str = str + std::to_string(ProcessId) + ":" +
+                  std::to_string(ThreadId) + "|";
+            str = str + filename.substr(found + 1) + ":" +
+                  std::to_string(line) +
+                  "(" + function + ")" +
+                  "---";
+        }
         str = str + logMessage;
-#endif // ifndef USE_COLOR_LOG
         std::lock_guard<std::mutex> lock(m_mutex);
         m_logQueue.push_front(str);
     }
