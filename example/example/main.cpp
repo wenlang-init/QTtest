@@ -4,6 +4,7 @@
 #include <QLocale>
 #include <QString>
 #include <QTranslator>
+#include <QtWebView>
 
 // #include "lognone.h"
 #if !defined(Q_OS_ANDROID)
@@ -125,6 +126,7 @@ int main(int argc, char *argv[])
 #endif // if defined(_WIN32) || defined(_WIN64)
 
     QApplication a(argc, argv);
+    QtWebView::initialize();
 #if !defined(Q_OS_ANDROID)
 
     // dump 路径

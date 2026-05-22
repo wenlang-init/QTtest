@@ -25,13 +25,19 @@ public:
     bool          isOpen();
     QSqlDatabase* getQSqlDatabase();
 
+    // sqlite VACUUM 命令会重建数据库文件，删除未使用的空间并优化数据库性能。
+    // 它可以帮助减少数据库文件的大小，提高查询效率，并修复可能存在的碎片问题。
+    // str:NONE(手动VACUUM), FULL(空间优先), INCREMENTAL(灵活控制)
+    bool sqliteVacuum();
+    bool sqliteVacuumAuto(QString str = "NONE");
+
     // 是否存在表
-    bool          isExistTable(const QString& tablename);
+    bool isExistTable(const QString& tablename);
 
     // 创建表
-    bool          createTable(const QString& tablename,
-                              const QString& createtablecmd,
-                              bool           iscover = false);
+    bool createTable(const QString& tablename,
+                     const QString& createtablecmd,
+                     bool           iscover = false);
 
     // 删除表
     bool dropTable(const QString& tablename);

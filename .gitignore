@@ -9,3 +9,4 @@ AIDialog
 nettunnel/shellbuild/linux-x64/build
 example/example/build
 example/example/build/.qtcreator
+example/example/.qmlls.ini

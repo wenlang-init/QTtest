@@ -80,6 +80,21 @@ QSqlDatabase * Sql_Engine::getQSqlDatabase()
     return _sql_db;
 }
 
+bool Sql_Engine::sqliteVacuum()
+{
+    return executeSingleCmd("VACUUM");
+}
+
+bool Sql_Engine::sqliteVacuumAuto(QString str)
+{
+    // 需求场景            推荐方案                      理由
+    // 通用服务器/Web应用 auto_vacuum = NONE(手动VACUUM) 性能优先。可以在夜间维护窗口定期（如每周）执行一次VACUUM。
+    // IoT/移动端/嵌入式  auto_vacuum = FULL            空间优先。如果设备存储非常有限，且写入频率不高，可以牺牲性能换取空间。
+    // 高性能且需控空间   auto_vacuum = INCREMENTAL	  灵活控制。允许你在系统空闲时，分批次回收空间，避免长时间锁库。
+
+    return executeSingleCmd(QString("PRAGMA auto_vacuum = %1").arg(str));
+}
+
 bool Sql_Engine::isExistTable(const QString& tablename)
 {
     if (isOpen() == false) return false;

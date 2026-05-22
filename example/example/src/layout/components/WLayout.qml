@@ -6,6 +6,7 @@ import QtMultimedia
 import QtQuick.Controls.Fusion
 import QtQuick.Dialogs
 import QtCore
+import QtWebView
 
 //Item
 Rectangle {
@@ -193,8 +194,32 @@ Rectangle {
             }
             Rectangle {
                 width: flickable.width
-                height: 350
+                height: 650
                 color: "#00ff00"
+                WebView {
+                    id: webView
+                    anchors.fill: parent
+                    url: "https://www.baidu.com/"
+                    Component.onCompleted: {
+                        console.log("xxxxxxxxx");
+                        //webView.loadHtml("<h1>Hello, Qt WebView!</h1>", "https://example.com")
+                    }
+                    onLoadingChanged: {
+                        console.log("Loading progress:", webView.loadProgress)
+                    }
+                    onUrlChanged: {
+                        console.log("URL changed to:", webView.url)
+                    }
+                    onTitleChanged: {
+                        console.log("Page title:", webView.title)
+                    }
+                    onCookieAdded: (domain, name)=>{
+                        console.log("Cookie added:", domain, name)
+                    }
+                    onCookieRemoved: (domain, name)=>{
+                        console.log("Cookie removed:", domain, name)
+                    }
+                }
             }
 
             Rectangle {
@@ -203,6 +228,7 @@ Rectangle {
                 color: "transparent"
                 // 分割占位
                 Text {
+                    id:cardText
                     text: "🍀------："
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: 20

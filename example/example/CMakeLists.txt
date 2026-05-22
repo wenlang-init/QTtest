@@ -16,6 +16,7 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     multimediawidgets
     QuickWidgets PrintSupport
     #Mqtt
+    WebView
 )
 
 # 设置项目范围默认为标准安排。该命令在Qt6包的Core组件中定义，可以像这样加载：
@@ -173,6 +174,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::QuickWidgets
     Qt${QT_VERSION_MAJOR}::PrintSupport
     #Qt${QT_VERSION_MAJOR}::Mqtt
+    Qt${QT_VERSION_MAJOR}::WebView
 )
 
 target_link_libraries(${PROJECT_NAME}

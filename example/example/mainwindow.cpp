@@ -10,7 +10,7 @@
 // #include <QMqttClient>
 #include "src/sql_engine.h"
 
-#define TTTT
+// #define TTTT
 #ifdef TTTT
 # include "src/messageWidget/listmessageview.h"
 # include "src/video/videowidget.h"
@@ -19,7 +19,7 @@
 # include "src/audio/widget.h"
 # include "src/layout/wlayout.h"
 #endif // ifdef TTTT
-
+#include "src/layout/wlayout.h"
 #include <QVBoxLayout>
 #include "XxwCustomPlot.h"
 
@@ -55,10 +55,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     QString sqlname = QCoreApplication::applicationDirPath() + "/testsql.db";
 
-    if (QFile::exists(sqlname)) qDebug().noquote() << QFile::remove(sqlname);
+    // if (QFile::exists(sqlname)) qDebug().noquote() << QFile::remove(sqlname);
     qDebug().noquote() << QSqlDatabase::drivers();
     sqle->openDb(sqlname);
+
+    // sqle->sqliteVacuumAuto("FULL");
     sqle->dropTable("testtablename");
+    sqle->sqliteVacuum();
+
     QString tablename = "testtablename";
     QString cmd = QString("create table %1 "
                           "(id integer primary key,"
@@ -162,6 +166,13 @@ MainWindow::MainWindow(QWidget *parent)
         qDebug() << "wLayout -------" << sender();
     });
 #endif // if 0
+    wLayout *wl = new wLayout;
+    wl->resize(600, 800);
+    wl->show();
+    wl->setAttribute(Qt::WA_DeleteOnClose, true);
+    connect(wl, &wLayout::destroyed, this, [&]() {
+        qDebug() << "wLayout -------" << sender();
+    });
 }
 
 MainWindow::~MainWindow()
