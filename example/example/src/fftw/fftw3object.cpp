@@ -1,5 +1,6 @@
 #include "fftw3object.h"
 #include "cxxlog.h"
+#include <QtEndian>
 
 static void test()
 {
@@ -61,10 +62,12 @@ fftw3Object::~fftw3Object()
 bool fftw3Object::fft(const QByteArray& sdata,
                       QVector<double> & dsdata,
                       QVector<double> & fftdata,
+                      QVector<double> & radiandata,
                       int               channalCount,
                       int               byteRate,
                       int               windowSize,
-                      int               overlap)
+                      int               overlap,
+                      bool              is_little)
 {
     QVector<double> tmpData;
     int size = sdata.size();
@@ -76,7 +79,13 @@ bool fftw3Object::fft(const QByteArray& sdata,
         const qint16 *p = (qint16 *)sdata.data();
 
         for (int i = 0; i < count; i += channalCount) {
-            double v = p[i];
+            double v;
+
+            if (is_little) {
+                v = qFromLittleEndian(p[i]);
+            } else {
+                v = qFromBigEndian(p[i]);
+            }
             v = v / 32768.0; // 归一化
             tmpData.append(v);
             dsdata.append(p[i]);
@@ -96,7 +105,13 @@ bool fftw3Object::fft(const QByteArray& sdata,
         const float *p = (float *)sdata.data();
 
         for (int i = 0; i < count; i += channalCount) {
-            double v = p[i];
+            double v;
+
+            if (is_little) {
+                v = qFromLittleEndian(p[i]);
+            } else {
+                v = qFromBigEndian(p[i]);
+            }
             tmpData.append(v);
             dsdata.append(p[i]);
 
@@ -143,6 +158,7 @@ bool fftw3Object::fft(const QByteArray& sdata,
 
     int frame_count = 0;
     fftdata.resize(windowSize / 2 + 1, 0.0);
+    radiandata.resize(windowSize / 2 + 1, 0.0);
 
     QVector<double> tmpDataOverlap(overlap, 0);
     const int needCount = windowSize - overlap;
@@ -161,7 +177,19 @@ bool fftw3Object::fft(const QByteArray& sdata,
 
         for (int j = 0; j <= windowSize / 2; ++j) {
             double mag = sqrt(out[j][0] * out[j][0] + out[j][1] * out[j][1]);
+
+            // 振幅
             fftdata[j] += mag / (windowSize / 2);
+
+            // 如果希望幅值以dBFS表示，可以进行对数转换:
+            // double db = 20 * log10((mag / (m_windowSize / 2)) + 1e-12);
+
+            // 相位(弧度) atan2:四象限反正切函数，结果范围在[-π, π]之间
+            // double radian = atan2(out[j][1], out[j][0]);
+            radiandata[j] += atan2(out[j][1], out[j][0]);
+
+            // 频率 f=j*采样率/采样点数
+            // double freq = j * 48000 / windowSize;
         }
         frame_count++;
     }
@@ -169,6 +197,8 @@ bool fftw3Object::fft(const QByteArray& sdata,
     // 计算平均值
     if (frame_count > 1) {
         for (auto& m : fftdata) m /= frame_count;
+
+        for (auto& m : radiandata) m /= frame_count;
     }
 
     // 5. 清理资源
@@ -236,7 +266,9 @@ bool fftw3Object::fftStreamStart(int windowSize, int overlap)
     return true;
 }
 
-int fftw3Object::fftAddStream(const QVector<double>& in, QVector<double>& out)
+int fftw3Object::fftAddStream(const QVector<double>& in,
+                              QVector<double>      & out,
+                              QVector<double>      & radiandata)
 {
     if (!m_plan) return -1;
 
@@ -274,6 +306,12 @@ int fftw3Object::fftAddStream(const QVector<double>& in, QVector<double>& out)
         // 如果希望幅值以dBFS表示，可以进行对数转换:
         // double db = 20 * log10((mag / (m_windowSize / 2)) + 1e-12);
         // out.append(db);
+
+        // 相位(弧度) atan2:四象限反正切函数，结果范围在[-π, π]之间
+        radiandata.append(atan2(m_output[i][1], m_output[i][0]));
+
+        // 频率 f=j*采样率/采样点数
+        // double freq = j * 48000 / windowSize;
     }
     return count - (m_windowSize - m_overlap);
 }

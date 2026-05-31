@@ -36,7 +36,8 @@ protected slots:
     void readData(QByteArray data);
 
     void fftwData(QVector<double>        dsdata,
-                  QList<QVector<double> >fftdata);
+                  QList<QVector<double> >fftdata,
+                  QList<QVector<double> >radianfftdata);
 
 signals:
 
@@ -65,6 +66,7 @@ private:
     QCheckBox *checkBox3;
     QCheckBox *checkBox4;
     QCheckBox *checkBox5;
+    QCheckBox *checkBox6;
     QSpinBox *spinBox1;
     QSpinBox *spinBox2;
 
@@ -81,14 +83,16 @@ private:
 
     customPlotCurve *m_customPlotCurve;
     customPlotCurve *m_customPlotCurveFFT;
-    customPlotCurve *m_customPlotCurveFFTDb;
+    customPlotCurve *m_customPlotCurveRadian;
     customPlotCurve *m_customPlotCurveSData;
     LineChartWidget *m_lineChartWidget;
+    customPlotCurve *m_customPlotCurveFFTDb;
 
     QDateTime m_dateTime1 = QDateTime::currentDateTime();
     QDateTime m_dateTime2 = QDateTime::currentDateTime();
     QDateTime m_dateTime3 = QDateTime::currentDateTime();
     QDateTime m_dateTime4 = QDateTime::currentDateTime();
+    QDateTime m_dateTime5 = QDateTime::currentDateTime();
     const int m_plotFlushTime = 100; // 刷新间隔ms
 
     int m_xcount = 0;

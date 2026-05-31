@@ -28,7 +28,8 @@ public slots:
 signals:
 
     void fftwData(QVector<double>        dsdata,
-                  QList<QVector<double> >fftdata);
+                  QList<QVector<double> >fftdata,
+                  QList<QVector<double> >radianfftdata);
 
 private:
 

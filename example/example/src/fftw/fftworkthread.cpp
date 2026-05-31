@@ -28,6 +28,7 @@ void FFTWorkThread::addStreamFFT(QByteArray data)
 {
     QVector<double> dsdata;
     QList<QVector<double> > fftdata;
+    QList<QVector<double> > radianfftdata;
 
     m_rdata.append(data);
 
@@ -58,6 +59,7 @@ void FFTWorkThread::addStreamFFT(QByteArray data)
 
     QVector<double> tmpData;
     QVector<double> _fftdata;
+    QVector<double> _radiandata;
 
     while (m_rdata.size() >= step) {
         tmpData.clear();
@@ -78,8 +80,7 @@ void FFTWorkThread::addStreamFFT(QByteArray data)
             qint16 *p = (qint16 *)m_rdata.data();
 
             for (int i = 0; i < m_count * channalCount; i += channalCount) {
-                // double v = qToLittleEndian(p[i]);
-                double v = qToLittleEndian(p[i] / 32767.0);
+                double v = p[i] / 32767.0;
                 tmpData.append(v);
             }
             break;
@@ -89,7 +90,7 @@ void FFTWorkThread::addStreamFFT(QByteArray data)
             qint32 *p = (qint32 *)m_rdata.data();
 
             for (int i = 0; i < m_count * channalCount; i += channalCount) {
-                double v = qToLittleEndian(p[i] / ((int)0x7FFFFFFF * 1.0));
+                double v = p[i] / ((int)0x7FFFFFFF * 1.0);
                 tmpData.append(v);
             }
             break;
@@ -99,17 +100,18 @@ void FFTWorkThread::addStreamFFT(QByteArray data)
             float *p = (float *)m_rdata.data();
 
             for (int i = 0; i < m_count * channalCount; i += channalCount) {
-                double v = qToLittleEndian(p[i]);
+                double v = p[i];
                 tmpData.append(v);
             }
             break;
         }
         }
 
-        m_fftw3obj->fftAddStream(tmpData, _fftdata);
+        m_fftw3obj->fftAddStream(tmpData, _fftdata, _radiandata);
 
         dsdata.append(tmpData);
         fftdata.append(_fftdata);
+        radianfftdata.append(_radiandata);
 
         m_rdata.remove(0, step);
     }
@@ -118,7 +120,7 @@ void FFTWorkThread::addStreamFFT(QByteArray data)
         qDebug() << fftdata.size();
     }
 
-    emit fftwData(dsdata, fftdata);
+    emit fftwData(dsdata, fftdata, radianfftdata);
 }
 
 void FFTWorkThread::stoptFFT()

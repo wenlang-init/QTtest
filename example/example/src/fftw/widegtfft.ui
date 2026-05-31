@@ -79,6 +79,16 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_15">
        <item>
+        <widget class="QCheckBox" name="checkBoxIsLittle">
+         <property name="text">
+          <string>小端序</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QLabel" name="label_8">
          <property name="text">
           <string>通道数</string>

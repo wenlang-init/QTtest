@@ -14,10 +14,12 @@ public:
     static bool fft(const QByteArray& sdata,
                     QVector<double> & dsdata,
                     QVector<double> & fftdata,
+                    QVector<double> & radiandata,
                     int               channalCount = 2,
                     int               byteRate = 2,
                     int               windowSize = 2048,
-                    int               overlap = 1024);
+                    int               overlap = 1024,
+                    bool              is_little = true);
 
     // 开始流式变换 windowSize为窗口大小(每次处理的大小)
     bool fftStreamStart(int windowSize = 1024,
@@ -27,7 +29,8 @@ public:
     // 注意:输入数据需要归一化到[-1,1]，比如int16需要除以32767
     // 返回剩余输入个数或-1
     int fftAddStream(const QVector<double>& in,
-                     QVector<double>& out);
+                     QVector<double>& out,
+                     QVector<double>& radiandata);
 
     // 结束变换
     void fftStreamSop();

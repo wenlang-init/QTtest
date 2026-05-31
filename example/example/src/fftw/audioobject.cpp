@@ -15,9 +15,13 @@ audioObject::audioObject(QObject *parent)
     connectInit();
 
     connect(m_fftWorkThread,
-            SIGNAL(fftwData(QVector<double>,QList<QVector<double> >)),
+            SIGNAL(fftwData(QVector<double>,
+                            QList<QVector<double> >,
+                            QList<QVector<double> >)),
             this,
-            SIGNAL(fftwData(QVector<double>,QList<QVector<double> >)));
+            SIGNAL(fftwData(QVector<double>,
+                            QList<QVector<double> >,
+                            QList<QVector<double> >)));
 
     connect(this,
             SIGNAL(startFFT(const QAudioFormat,const int,const int)),

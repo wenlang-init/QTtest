@@ -216,15 +216,30 @@ widegtFFT::widegtFFT(QWidget *parent) :
 
         QVector<double>dsdata;
         QVector<double>fftdata;
+        QVector<double>radiandata;
         int channalCount = ui->spinBox->value();
         int byteRate = ui->spinBox2->value() / 8;
         m_AudioSourceSample = ui->spinBox3->value();
         m_windowSize = 2048;
 
-        fftw3Object::fft(data, dsdata, fftdata, channalCount, byteRate,
-                         m_windowSize, m_windowSize / 2);
+        fftw3Object::fft(data,
+                         dsdata,
+                         fftdata,
+                         radiandata,
+                         channalCount,
+                         byteRate,
+                         m_windowSize,
+                         m_windowSize / 2,
+                         ui->checkBoxIsLittle->isChecked());
 
         {
+            QString strtime = fileName.split("/").last() + " 时长: ";
+            qint64 times = data.size() /
+                           (1.0 * byteRate * m_AudioSourceSample * channalCount) * 1000;
+            strtime += QTime::fromMSecsSinceStartOfDay(times)
+                       .toString("hh:mm:ss.zzz");
+            ui->label->setText(strtime);
+
             // QMediaDevices devices;
             // QAudioFormat format =
             // devices.defaultAudioOutput().preferredFormat();
@@ -263,7 +278,9 @@ widegtFFT::widegtFFT(QWidget *parent) :
         readData(data);
         QList<QVector<double> >_fftdata;
         _fftdata.append(fftdata);
-        fftwData(dsdata, _fftdata);
+        QList<QVector<double> >_radiandata;
+        _radiandata.append(radiandata);
+        fftwData(dsdata, _fftdata, _radiandata);
     });
 
     connect(ui->checkBox, &QCheckBox::checkStateChanged, this, [ = ]() {
@@ -393,10 +410,12 @@ void widegtFFT::readData(QByteArray data)
 }
 
 void widegtFFT::fftwData(QVector<double>        dsdata,
-                         QList<QVector<double> >fftdata)
+                         QList<QVector<double> >fftdata,
+                         QList<QVector<double> >radiandata)
 {
-    if ((dsdata.size() < 1) || (fftdata.size() < 1) ||
-        (fftdata[fftdata.size() - 1].size() < 1)) return;
+    if ((dsdata.size() < 1) || (fftdata.size() < 1) || (radiandata.size() < 1) ||
+        (fftdata[fftdata.size() - 1].size() < 1) ||
+        (radiandata[radiandata.size() - 1].size() < 1)) return;
 
     if (checkBox1->isChecked()) {
 #if 0
@@ -583,12 +602,41 @@ void widegtFFT::fftwData(QVector<double>        dsdata,
             }
         }
     }
+
+    if (checkBox6->isChecked() &&
+        (m_dateTime5.msecsTo(QDateTime::currentDateTime()) > m_plotFlushTime)) {
+        m_dateTime5 = QDateTime::currentDateTime();
+        m_customPlotCurveRadian->m_customPlot->
+        graph(0)->data().data()->clear();
+
+        double xmin = 0, xmax = 1;
+        int    _count = radiandata[radiandata.size() - 1].size();
+
+        QList<QPointF> points;
+
+        double tmp = 180 / M_PI;
+
+        for (int i = 0; i < _count; i++) {
+            double sample = m_AudioSourceSample;
+            double fs = 1.0 * i * sample / m_windowSize;
+
+            if (i == 0) xmin = fs;
+
+            if (i == _count - 1) xmax = fs;
+
+            m_customPlotCurveRadian->m_customPlot->graph(0)->
+            addData(fs, radiandata[radiandata.size() - 1][i] * tmp);
+        }
+        m_customPlotCurveRadian->m_customPlot->xAxis->setRange(xmin, xmax);
+        m_customPlotCurveRadian->m_customPlot->replot();
+    }
 }
 
 void widegtFFT::initPlot() {
     m_customPlotCurve = new customPlotCurve(this);
     m_customPlotCurveFFT = new customPlotCurve(this);
     m_customPlotCurveFFTDb = new customPlotCurve(this);
+    m_customPlotCurveRadian = new customPlotCurve(this);
     m_customPlotCurveSData = new customPlotCurve(this);
     m_lineChartWidget = new LineChartWidget(this);
     m_lineChartWidget->getLineSeries()->setName("db/频率");
@@ -600,11 +648,13 @@ void widegtFFT::initPlot() {
     checkBox3 = new QCheckBox("自动刷新", this);
     checkBox4 = new QCheckBox("自动刷新", this);
     checkBox5 = new QCheckBox("自动刷新", this);
+    checkBox6 = new QCheckBox("自动刷新", this);
 
     QCheckBox *checkBox11 =  new QCheckBox("显示追踪线", this);
     QCheckBox *checkBox12 =  new QCheckBox("显示追踪线", this);
     QCheckBox *checkBox13 =  new QCheckBox("显示追踪线", this);
     QCheckBox *checkBox14 =  new QCheckBox("显示追踪线", this);
+    QCheckBox *checkBox15 =  new QCheckBox("显示追踪线", this);
     QLabel    *label1 = new QLabel("量程长度：", this);
     QLabel    *label2 = new QLabel("量程长度：", this);
     spinBox1 = new QSpinBox(this);
@@ -639,6 +689,7 @@ void widegtFFT::initPlot() {
     doubleSpinBox23->setValue(-60);
     doubleSpinBox24->setValue(0);
     doubleSpinBox25->setValue(-60);
+    doubleSpinBox25->setValue(0);
 
     checkBox21->hide();
     doubleSpinBox21->hide();
@@ -683,17 +734,24 @@ void widegtFFT::initPlot() {
     hboxLayout5->addWidget(checkBox25);
     hboxLayout5->addWidget(doubleSpinBox25);
     hboxLayout5->addStretch();
+    QHBoxLayout *hboxLayout6 = new QHBoxLayout;
+    hboxLayout6->setContentsMargins(0, 0, 0, 0);
+    hboxLayout6->addWidget(checkBox6);
+    hboxLayout6->addWidget(checkBox15);
+    hboxLayout6->addStretch();
 
     QWidget *widget1 = new QWidget(this);
     QWidget *widget2 = new QWidget(this);
     QWidget *widget3 = new QWidget(this);
     QWidget *widget4 = new QWidget(this);
     QWidget *widget5 = new QWidget(this);
+    QWidget *widget6 = new QWidget(this);
     QVBoxLayout *vLayout1 = new QVBoxLayout(widget1);
     QVBoxLayout *vLayout2 = new QVBoxLayout(widget2);
     QVBoxLayout *vLayout3 = new QVBoxLayout(widget3);
     QVBoxLayout *vLayout4 = new QVBoxLayout(widget4);
     QVBoxLayout *vLayout5 = new QVBoxLayout(widget5);
+    QVBoxLayout *vLayout6 = new QVBoxLayout(widget6);
     vLayout1->setContentsMargins(0, 0, 0, 0);
     vLayout1->addLayout(hboxLayout1);
     vLayout1->addWidget(m_customPlotCurve);
@@ -709,12 +767,16 @@ void widegtFFT::initPlot() {
     vLayout5->setContentsMargins(0, 0, 0, 0);
     vLayout5->addLayout(hboxLayout5);
     vLayout5->addWidget(m_lineChartWidget);
+    vLayout6->setContentsMargins(0, 0, 0, 0);
+    vLayout6->addLayout(hboxLayout6);
+    vLayout6->addWidget(m_customPlotCurveRadian);
 
     QTabWidget *tabwidget = new QTabWidget(this);
     tabwidget->setContentsMargins(0, 0, 0, 0);
     tabwidget->addTab(widget1, "原数据");
     tabwidget->addTab(widget2, "FFT数据");
     tabwidget->addTab(widget3, "FFT显示DBFS/FS");
+    tabwidget->addTab(widget6, "FFT显示弧度/FS");
     tabwidget->addTab(widget4, "原始采集数据(未转换)");
     tabwidget->addTab(widget5, "QChart");
 
@@ -756,6 +818,14 @@ void widegtFFT::initPlot() {
                                      QPen(QColor(255, 255, 0, 255)),
                                      QBrush(QColor(0, 0, 255, 0)));
 
+    m_customPlotCurveRadian->m_customPlot->xAxis->setLabel("频率");
+    m_customPlotCurveRadian->m_customPlot->yAxis->setLabel("弧度");
+    m_customPlotCurveRadian->m_customPlot->legend->setVisible(false);
+    m_customPlotCurveRadian->setShowTracer(true);
+    m_customPlotCurveRadian->addGraph("音频数据弧度波形",
+                                      QPen(QColor(123, 231, 10, 255)),
+                                      QBrush(QColor(0, 0, 255, 0)));
+
     m_customPlotCurveSData->m_customPlot->xAxis->setLabel("x");
     m_customPlotCurveSData->m_customPlot->yAxis->setLabel("y");
     m_customPlotCurveSData->m_customPlot->legend->setVisible(false);
@@ -775,10 +845,14 @@ void widegtFFT::initPlot() {
     connect(checkBox14, &QCheckBox::checkStateChanged, this, [ = ]() {
         m_customPlotCurveSData->setShowTracer(checkBox14->isChecked());
     });
+    connect(checkBox15, &QCheckBox::checkStateChanged, this, [ = ]() {
+        m_customPlotCurveRadian->setShowTracer(checkBox15->isChecked());
+    });
     checkBox11->setChecked(true);
     checkBox12->setChecked(true);
     checkBox13->setChecked(true);
     checkBox14->setChecked(true);
+    checkBox15->setChecked(true);
 }
 
 void widegtFFT::init()
@@ -1153,6 +1227,8 @@ void widegtFFT::init()
         m_customPlotCurve->m_customPlot->yAxis->setRange(-0.01, 0.01);
         m_customPlotCurveFFT->m_customPlot->yAxis->setRange(0, 0.1);
         m_customPlotCurveFFTDb->m_customPlot->yAxis->setRange(-160, 0);
+        m_customPlotCurveRadian->m_customPlot->yAxis->setRange(-180,
+                                                               180);
         m_customPlotCurveSData->m_customPlot->yAxis->setRange(-1000, 1000);
         m_lineChartWidget->getAxisY()->setRange(-160, 0);
     });

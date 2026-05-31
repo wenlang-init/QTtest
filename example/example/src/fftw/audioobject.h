@@ -64,7 +64,8 @@ signals:
     void readData_private(QByteArray& data);
 
     void fftwData(QVector<double>        dsdata,
-                  QList<QVector<double> >fftdata);
+                  QList<QVector<double> >fftdata,
+                  QList<QVector<double> >radianfftdata);
 
     void startFFT(const QAudioFormat format,
                   const int          windowSize,
