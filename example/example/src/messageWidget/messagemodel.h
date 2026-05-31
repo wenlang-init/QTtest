@@ -9,7 +9,7 @@
 #include <QQuickItem>
 #include <QCache>
 
-#define A_PROPERTY(T, NAME, INITVALUE)                                     \
+#define A_PROPERTY1(T, NAME, INITVALUE)                                    \
 private:                                                                   \
     Q_PROPERTY(T NAME READ NAME WRITE set_ ## NAME NOTIFY NAME ## Changed) \
 public:                                                                    \
@@ -38,15 +38,15 @@ class MessageInfo : public QObject {
     // 因为在model中用QMetaProperty::read获取数据的,所以数据要这样定义
     // 是根据变量名查找的，要保证变量名和Roles里的一致的才能找到
     /////////////////////////////////////////
-    A_PROPERTY(unsigned long long, messageTime,  0);
-    A_PROPERTY(bool,               isSend,   false);
-    A_PROPERTY(QString,            messageData, "");
+    A_PROPERTY1(unsigned long long, messageTime,  0);
+    A_PROPERTY1(bool,               isSend,   false);
+    A_PROPERTY1(QString,            messageData, "");
 
     // 头像名
-    A_PROPERTY(QString,            headPortrait, 0);
+    A_PROPERTY1(QString,            headPortrait, 0);
 
     // 用于其他数据结构的指针
-    A_PROPERTY(unsigned long long, dataPtr,      0);
+    A_PROPERTY1(unsigned long long, dataPtr,      0);
 
 public:
 

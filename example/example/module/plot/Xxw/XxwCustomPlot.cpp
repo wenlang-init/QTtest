@@ -27,7 +27,7 @@ void XxwCustomPlot::mouseMoveEvent(QMouseEvent *event)
                                                               XxwTracer::XAxisTracer);
 
         // x轴
-        m_xTracer->updatePosition(x_val, y_val);
+        m_xTracer->updatePosition(x_val, y_val - 100);
 
         if (Q_NULLPTR == m_yTracer) m_yTracer = new XxwTracer(this,
                                                               XxwTracer::YAxisTracer);

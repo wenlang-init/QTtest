@@ -11,11 +11,11 @@ project(log LANGUAGES C CXX)
 #target_include_directories(${PROJECT_NAME} PRIVATE ./)
 file(GLOB LOG_SOURCE CONFIGURE_DEPENDS *.c *.h *.cpp printf/*.c printf/*.h)
 
-add_library(log ${LOG_SOURCE})
+add_library(${PROJECT_NAME} ${LOG_SOURCE})
 # 动态库
-# add_library(${PROJECT_NAME}_shared
+# add_library(${PROJECT_NAME}
 #     SHARED
-#     ${PLOT_SOURCES}
+#     ${LOG_SOURCE}
 # )
 
 #message(STATUS "log source: ${PROJECT_SOURCE_DIR}/Pre-built.2/include")

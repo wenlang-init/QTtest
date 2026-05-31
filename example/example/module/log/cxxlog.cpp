@@ -46,12 +46,12 @@
 
 // echo -e RED"这是红色文本"RESET
 
-static void printMessage(const CxxLog::LOG_TYPE& logType,
-                         const char             *function,
-                         const char             *file,
-                         const int               line,
-                         const char             *format,
-                         ...)
+static inline void printMessage(const CxxLog::LOG_TYPE& logType,
+                                const char             *function,
+                                const char             *file,
+                                const int               line,
+                                const char             *format,
+                                ...)
 {
     va_list arg;
 
@@ -271,7 +271,7 @@ bool CxxLog::initLog(const std::string & logDir,
     return true;
 }
 
-bool CxxLog::creatLogFile()
+inline bool CxxLog::creatLogFile()
 {
     // 创建新文件
     if (m_currentLogFileSize >= m_fileLogMaxSize) {
@@ -304,12 +304,13 @@ bool CxxLog::creatLogFile()
 
 void CxxLog::logThreadFunc()
 {
-    while (!m_stopThread) {
-        // C++20
-        // unsigned long long nowTimeMs =
-        // duration_cast<std::chrono::milliseconds>
-        // (std::chrono::system_clock::now().time_since_epoch()).count();
+    const static std::chrono::nanoseconds nanoseconds =
+        std::chrono::milliseconds(1);
 
+    const int maxsize = 1000;
+
+    while (!m_stopThread) {
+        std::this_thread::sleep_for(nanoseconds);
         unsigned long long nowTimeMs =
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::system_clock::now().time_since_epoch()
@@ -321,21 +322,30 @@ void CxxLog::logThreadFunc()
             if (m_logFileStream.is_open()) m_logFileStream.flush();
         }
 
-        // 每次等待m_flushMs时间
-        // std::this_thread::sleep_for(std::chrono::milliseconds(m_flushMs));
+        std::lock_guard<std::mutex> lock(m_mutex);
+
         if (m_logQueue.size() < 1) continue;
 
-        if (creatLogFile()) {
-            std::lock_guard<std::mutex> lock(m_mutex);
-
-            // 写日志
-            const std::string& logMessage = m_logQueue.back();
-            m_logFileStream << logMessage;
-            m_currentLogFileSize += logMessage.size();
-            m_logQueue.pop_back();
+        // 当缓存区数据条数过大时，全部取出
+        if (m_logQueue.size() > maxsize) {
+            while (m_logQueue.size() > 0) {
+                if (creatLogFile()) {
+                    // 写日志
+                    const std::string& logMessage = m_logQueue.back();
+                    m_logFileStream << logMessage;
+                    m_currentLogFileSize += logMessage.size();
+                }
+                m_logQueue.pop_back();
+            }
         } else {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            m_logQueue.pop_back();
+            // 取1次数据
+            if (creatLogFile()) {
+                // 写日志
+                const std::string& logMessage = m_logQueue.back();
+                m_logFileStream << logMessage;
+                m_currentLogFileSize += logMessage.size();
+                m_logQueue.pop_back();
+            }
         }
     }
 

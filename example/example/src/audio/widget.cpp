@@ -4,6 +4,7 @@
 #include <QAudioDevice>
 #include <QMediaDevices>
 #include <QTimer>
+#include <QtEndian>
 #include "printFunction.h"
 
 Widget::Widget(QWidget *parent)
@@ -695,7 +696,7 @@ void Widget::opensource()
             ui->comboBoxinch->currentText());
         return;
     }
-#if 0
+#if 1
     qsizetype i;
     QString   devname = ui->comboBoxin->currentText();
 
@@ -718,15 +719,21 @@ void Widget::opensource()
     }
 #endif // if 0
 
-    audioin = new QAudioSource(format, this);
+    // audioin = new QAudioSource(format, this);
+    audioin = new QAudioSource(info, format, this);
     audioin->setVolume(1);
 
     // qDebug()<<audioin->volume();
     connect(audioin, SIGNAL(stateChanged(QAudio::State)), this,
             SLOT(handleStateChanged(QAudio::State)));
+
+    // audioin->setBufferSize(4096);
     QIODevice *io = audioin->start();
     connect(io, &QIODevice::readyRead, this, [ = ]() {
         QByteArray data = io->readAll();
+
+        // for(int i=0;i<data.size();i++);
+        // qDebug() << data.size();
 
         // qDebug()<<data.size();
         // processData(data,format);
@@ -799,7 +806,28 @@ void Widget::opensink()
         return;
     }
 
-    audioout = new QAudioSink(format, this);
+    qsizetype i;
+    QString   devname = ui->comboBoxout->currentText();
+
+    for (i = 0; i < QMediaDevices::audioOutputs().size(); i++) {
+        if (devname == QMediaDevices::audioOutputs().at(i).description()) {
+            break;
+        }
+    }
+
+    if (i >= QMediaDevices::audioOutputs().size()) {
+        qDebug() << QString("not found device:%1").arg(devname);
+        return;
+    }
+    QAudioDevice info(QMediaDevices::audioOutputs().at(i));
+
+    if (!info.isFormatSupported(format)) {
+        qWarning() <<
+            "Raw audio format not supported by backend, cannot play audio.";
+        return;
+    }
+
+    audioout = new QAudioSink(info, format, this);
     audioout->setVolume(1);
 
     // qDebug()<<audioout->volume();

@@ -18,8 +18,10 @@
 # include "src/qmlList/listw.h"
 # include "src/audio/widget.h"
 # include "src/layout/wlayout.h"
+# include "src/fftw/widegtfft.h"
 #endif // ifdef TTTT
-#include "src/layout/wlayout.h"
+
+
 #include <QVBoxLayout>
 #include "XxwCustomPlot.h"
 
@@ -165,14 +167,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(wl, &wLayout::destroyed, this, [&]() {
         qDebug() << "wLayout -------" << sender();
     });
-#endif // if 0
-    wLayout *wl = new wLayout;
-    wl->resize(600, 800);
-    wl->show();
-    wl->setAttribute(Qt::WA_DeleteOnClose, true);
-    connect(wl, &wLayout::destroyed, this, [&]() {
-        qDebug() << "wLayout -------" << sender();
+    widegtFFT *wft = new widegtFFT;
+    wft->resize(600, 800);
+    wft->show();
+    wft->setAttribute(Qt::WA_DeleteOnClose, true);
+    connect(wft, &widegtFFT::destroyed, this, [&]() {
+        qDebug() << "widegtFFT -------" << sender();
     });
+
+#endif // if 0
 }
 
 MainWindow::~MainWindow()

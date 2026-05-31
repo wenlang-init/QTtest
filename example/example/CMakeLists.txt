@@ -17,6 +17,10 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     QuickWidgets PrintSupport
     #Mqtt
     WebView
+    Network
+    Charts
+    #OpenGL
+    OpenGLWidgets
 )
 
 # 设置项目范围默认为标准安排。该命令在Qt6包的Core组件中定义，可以像这样加载：
@@ -53,11 +57,33 @@ set(layoutsources
     src/layout/wlayout.cpp
 )
 
+set(fftsources
+    src/fftw/fftw3object.h
+    src/fftw/fftw3object.cpp
+    src/fftw/udpobject.h
+    src/fftw/udpobject.cpp
+    src/fftw/audioobject.cpp
+    src/fftw/audioobject.h
+    src/fftw/widegtfft.h
+    src/fftw/widegtfft.cpp
+    src/fftw/widegtfft.ui
+    src/fftw/ffmpegobject.h
+    src/fftw/ffmpegobject.cpp
+    src/fftw/fftworkthread.h
+    src/fftw/fftworkthread.cpp
+    src/fftw/linechartwidget.h
+    src/fftw/linechartwidget.cpp
+    src/fftw/widgetitem.h
+    src/fftw/widgetitem.cpp
+)
+
 set(MODULE_SOURCES
     src/sql_engine.cpp
     src/sql_engine.h
+
     src/cpu/funchelper.cpp
     src/cpu/funchelper.h
+
     ${mwsources}
     ${videosources}
     ${graphicssources}
@@ -65,18 +91,26 @@ set(MODULE_SOURCES
     ${audiosources}
     ${layoutsources}
 )
+if(WIN32 OR Linux)
+    set(MODULE_SOURCES
+        ${MODULE_SOURCES}
+        ${fftsources}
+    )
+endif()
 
 set(PROJECT_SOURCES
-        main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
-        ${TS_FILES}
-        ${MODULE_SOURCES}
+    main.cpp
+    mainwindow.cpp
+    mainwindow.h
+    mainwindow.ui
+    ${TS_FILES}
+    ${MODULE_SOURCES}
 )
 
 qt_add_resources(APP_RESOURCES
     resources.qrc
+    ${CMAKE_SOURCE_DIR}/resources/QtTheme/QtTheme.qrc
+    ${CMAKE_SOURCE_DIR}/resources/MacOS/MacOS.qrc
 )
 
 # QMessageLogContext 获取日志上下文信息，包含文件名、行号、函数名等信息。
@@ -164,6 +198,15 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
+# 设置cmake模块的路径,存放上面函数的脚本名称为 enableWraning.txt，存放在cmake目录下：
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/")
+# 引入cmake的模块
+include(enableWraning.cmake)
+#target_set_warnings(${PROJECT_NAME} true false)
+
+#set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Release)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Sql
@@ -175,6 +218,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::PrintSupport
     #Qt${QT_VERSION_MAJOR}::Mqtt
     Qt${QT_VERSION_MAJOR}::WebView
+    Qt${QT_VERSION_MAJOR}::Network
+    Qt${QT_VERSION_MAJOR}::Charts
+    #Qt${QT_VERSION_MAJOR}::OpenGL
+    Qt${QT_VERSION_MAJOR}::OpenGLWidgets
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -184,6 +231,117 @@ target_link_libraries(${PROJECT_NAME}
         decodepublic
 )
 
+# fftw 库
+set(FFTWPATH ${PROJECT_SOURCE_DIR}/thirdparty/fftw)
+if(WIN32)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${FFTWPATH}/W64-3.3.5)
+    if(MSVC)
+        # 只有def文件和dll文件，需要生成lib文件
+        set(DEF_FILE ${FFTWPATH}/W64-3.3.5/libfftw3-3.def)
+        set(LIB_OUTPUT ${FFTWPATH}/W64-3.3.5/libfftw3-3.lib)
+        add_custom_command(
+            OUTPUT ${LIB_OUTPUT}
+            COMMAND lib.exe /DEF:${DEF_FILE} /OUT:${LIB_OUTPUT} /MACHINE:X64
+            DEPENDS ${DEF_FILE}
+            VERBATIM
+        )
+        add_custom_target(GenerateThirdPartyLib DEPENDS ${LIB_OUTPUT})
+        add_library(ThirdParty::Lib STATIC IMPORTED)
+        add_dependencies(ThirdParty::Lib GenerateThirdPartyLib)
+        set_target_properties(ThirdParty::Lib PROPERTIES
+            IMPORTED_LOCATION ${LIB_OUTPUT}
+        )
+
+        target_link_libraries(${PROJECT_NAME} PRIVATE
+            ThirdParty::Lib
+        )
+
+        #set(CMAKE_LINK_DEF_FILE_FLAG ${CMAKE_LINK_DEF_FILE_FLAG}${FFTWPATH}/W64-3.3.5/libfftw3-3.def)
+        #message(STATUS "Link Def File Flag: ${CMAKE_LINK_DEF_FILE_FLAG}")
+    else()
+        target_link_libraries(${PROJECT_NAME} PRIVATE
+            ${FFTWPATH}/W64-3.3.5/libfftw3-3.dll
+            #${FFTWPATH}/W64-3.3.5/libfftw3f-3.dll
+            #${FFTWPATH}/W64-3.3.5/libfftw3l-3.dll
+        )
+    endif()
+    # add_custom_command(TARGET ${PROJECT_NAME}
+    #    POST_BUILD
+    #    COMMAND ${CMAKE_COMMAND} -E
+    #         copy_if_different
+    #         ${FFTWPATH}/W64-3.3.5/libfftw3-3.dll
+    #         "${CMAKE_BINARY_DIR}"
+    # )
+elseif(UNIX)
+    if(LINUX)
+        target_link_directories(${PROJECT_NAME} PRIVATE ${FFTWPATH}/linux-x64-3.3.11/lib)
+        target_link_libraries(${PROJECT_NAME} PRIVATE
+            libfftw3.a
+            # libfftw3_mpi.a
+            # libfftw3_omp.a
+            # libfftw3_threads.a
+        )
+        target_include_directories(${PROJECT_NAME} PRIVATE
+            ${FFTWPATH}/linux-x64-3.3.11/include
+        )
+    endif()
+endif()
+
+# ffmpeg 库
+set(FFTMPEGPATH ${PROJECT_SOURCE_DIR}/thirdparty/ffmpeg)
+if(WIN32)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/windows/include)
+    target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/windows/lib)
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        avcodec avformat avutil
+        #swresample swscale avdevice avfilter
+    )
+
+    # add_custom_command(TARGET ${PROJECT_NAME}
+    #    POST_BUILD
+    #    COMMAND ${CMAKE_COMMAND} -E
+    #         copy_if_different
+    #         ${FFTMPEGPATH}/windows/bin/*.dll
+    #         "${CMAKE_BINARY_DIR}"
+    # )
+elseif(UNIX)
+    if(LINUX)
+        #find_package(PkgConfig REQUIRED) # 如果找不到会直接报错，不需要手动判断
+        find_package(PkgConfig QUIET) # 找不到不会终止
+        if(PkgConfig_FOUND)
+            pkg_check_modules(AVFORMAT REQUIRED libavformat)
+            pkg_check_modules(AVCODEC REQUIRED libavcodec)
+            pkg_check_modules(AVUTIL REQUIRED libavutil)
+            target_include_directories(${PROJECT_NAME} PRIVATE ${AVFORMAT_INCLUDE_DIRS})
+            target_include_directories(${PROJECT_NAME} PRIVATE ${AVCODEC_INCLUDE_DIRS})
+            target_include_directories(${PROJECT_NAME} PRIVATE ${AVUTIL_INCLUDE_DIRS})
+            target_link_libraries(${PROJECT_NAME} PRIVATE
+                ${AVFORMAT_LIBRARIES} ${AVCODEC_LIBRARIES} ${AVUTIL_LIBRARIES}
+            )
+        else()
+            message(FATAL_ERROR "PkgConfig not found, cannot continue")
+            # 设置 PKG_CONFIG_PATH 以支持非标准路径 (可选)
+            set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${CUSTOM_FFMPEG_PATH}/lib/pkgconfig")
+            pkg_check_modules(PC_FFMPEG QUIET libavcodec libavformat libavutil libswresample)
+            if(NOT PC_FFMPEG_FOUND)
+                # 引入已经存在的动态库avcodec
+                #add_library(avcodec SHARED IMPORTED)
+                #指定所添加依赖库的导入路径
+                #set_target_properties(avcodec PROPERTIES IMPORTED_LOCATION ./libavcodec.so )
+
+                target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/include)
+                target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/lib)
+
+                target_link_libraries(${PROJECT_NAME} PRIVATE
+                    avcodec avformat avutil
+                    #swresample swscale avdevice avfilter
+                )
+            endif()
+        endif()
+    endif()
+endif()
+
 if(NOT ANDROID)
     target_link_libraries(${PROJECT_NAME}
         PUBLIC
@@ -191,6 +349,13 @@ if(NOT ANDROID)
             #breakpads
     )
 endif()
+
+# set_target_properties(${PROJECT_NAME} PROPERTIES
+#     # 检测栈内存溢出 -fsanitize=address
+#     # 关闭栈保护 -fno-stack-protector
+#     #COMPILE_FLAGS "-fsanitize=address"
+#     LINK_FLAGS "-fsanitize=address"
+# )
 
 #include(GNUInstallDirs)
 install(TARGETS ${PROJECT_NAME}

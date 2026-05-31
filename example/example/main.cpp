@@ -6,6 +6,18 @@
 #include <QTranslator>
 #include <QtWebView>
 
+#include <QOpenGLWidget>
+#include <QGraphicsView>
+#include <QGraphicsProxyWidget>
+
+#include "src/fftw/widegtfft.h"
+#include "src/messageWidget/listmessageview.h"
+#include "src/video/videowidget.h"
+#include "src/graphics/graphicswidget.h"
+#include "src/qmlList/listw.h"
+#include "src/audio/widget.h"
+#include "src/layout/wlayout.h"
+
 // #include "lognone.h"
 #if !defined(Q_OS_ANDROID)
 # include "QBreakpadHandler.h"
@@ -125,13 +137,40 @@ int main(int argc, char *argv[])
     initexitDetection();
 #endif // if defined(_WIN32) || defined(_WIN64)
 
+    // 使用 OpenGL ES 2.0 渲染（适用于移动设备和某些桌面环境）
+    // QCoreApplication::setAttribute(Qt::AA_UseOpenGLES);
+
+    // 强制使用桌面 OpenGL（适用于大多数桌面环境，但在某些平台上可能不兼容）
+    // QCoreApplication::setAttribute(Qt::AA_UseDesktopOpenGL);
+    // qDebug() << QCoreApplication::testAttribute(Qt::AA_UseDesktopOpenGL);
+
+    // 强制使用软件OpenGL（适用于没有硬件加速的环境，但性能较差）
+    // QCoreApplication::setAttribute(Qt::AA_UseSoftwareOpenGL);
+
     QApplication a(argc, argv);
+
     QtWebView::initialize();
+
 #if !defined(Q_OS_ANDROID)
 
     // dump 路径
     QBreakpadInstance.setDumpPath("./qbreakpad_dump");
 #endif // if !defined(Q_OS_ANDROID)
+
+#if 0
+
+    // QFile styleFile(":/QtTheme/theme/Flat/Dark/Blue/LightGreen.qss");
+    QFile styleFile(":/MacOS/MacOS.qss");
+
+    if (styleFile.open(QIODevice::ReadOnly)) {
+        QString style = styleFile.readAll();
+        a.setStyleSheet(style);
+        INFO_LOG_CXX("%s,%d\n",
+                     styleFile.fileName().toLocal8Bit().data(),
+                     style.size());
+        styleFile.close();
+    }
+#endif // if 0
 
     // MainWindow *aaa = nullptr; aaa->show();
 
@@ -182,8 +221,62 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    MainWindow w;
-    w.show();
+
+    qDebug().noquote() << qApp->applicationFilePath()
+                       << "\nPID:" << qApp->applicationPid()
+                       << "\nversion:" << qApp->applicationVersion()
+                       << "\narg:" << qApp->arguments()
+                       << "\norganization:" << qApp->organizationDomain()
+                       << ";" << qApp->organizationName();
+
+    if (argc >= 2) {
+        QString str = argv[1];
+
+        if (str == "1") {
+            widegtFFT *w = new widegtFFT;
+            w->resize(600, 600);
+            w->show();
+            w->setAttribute(Qt::WA_DeleteOnClose, true);
+            QObject::connect(w, &widegtFFT::destroyed, [&]() {
+                qDebug() << "widegtFFT -------" << w;
+            });
+        } else if (str == "2") {
+            static videoWidget w;
+            w.resize(600, 600);
+            w.show();
+        } else if (str == "3") {
+            static ListMessageView w;
+            w.resize(600, 600);
+            w.show();
+        } else if (str == "4") {
+            static GraphicsWidget w;
+            w.resize(600, 600);
+            w.show();
+        } else if (str == "5") {
+            static ListW w;
+            w.resize(600, 600);
+            w.show();
+        } else if (str == "6") {
+            static Widget w;
+            w.resize(600, 600);
+            w.show();
+        } else if (str == "7") {
+            static wLayout w;
+            w.resize(600, 600);
+            w.show();
+        }  else {
+            static MainWindow w;
+            w.show();
+        }
+    } else {
+        widegtFFT *w = new widegtFFT;
+        w->resize(600, 600);
+        w->show();
+        w->setAttribute(Qt::WA_DeleteOnClose, true);
+        QObject::connect(w, &widegtFFT::destroyed, [&]() {
+            qDebug() << "widegtFFT -------" << w;
+        });
+    }
 
     int ret = a.exec();
 
