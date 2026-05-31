@@ -144,10 +144,19 @@ bool fftw3Object::fft(const QByteArray& sdata,
     int frame_count = 0;
     fftdata.resize(windowSize / 2 + 1, 0.0);
 
-    for (int i = 0; i + overlap <= tmpData.size(); i += overlap) {
+    QVector<double> tmpDataOverlap(overlap, 0);
+    const int needCount = windowSize - overlap;
+
+    for (int i = 0; i + needCount <= tmpData.size(); i += needCount) {
         for (int j = 0; j < windowSize; j++) {
-            in[j] = tmpData[i + j] * window[j];
+            if (j < overlap) {
+                in[j] = tmpDataOverlap[j];
+            } else {
+                in[j] = tmpData[i + j - overlap] * window[j];
+                tmpDataOverlap[j - overlap] = in[j];
+            }
         }
+
         fftw_execute(plan);
 
         for (int j = 0; j <= windowSize / 2; ++j) {

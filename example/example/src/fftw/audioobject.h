@@ -6,6 +6,7 @@
 #include <QAudioSource>
 #include <QAudioDevice>
 #include <QThread>
+#include <QBuffer>
 
 class FFTWorkThread;
 class audioObject : public QObject {
@@ -30,6 +31,11 @@ public:
     int  getFFTPointCount() {
         return m_windowSize;
     }
+
+public slots:
+
+    void writeAudioData(QByteArray   rdata,
+                        QAudioFormat format);
 
 protected slots:
 
@@ -71,6 +77,11 @@ private:
     QAudioSource *m_audioSource = nullptr;
     QAudioSink *m_audioSink = nullptr;
     QIODevice *m_ioSource = nullptr;
+    QIODevice *m_ioSink = nullptr;
+
+    QAudioSink *m_audioSinkPCM = nullptr;
+    QBuffer *buffer = nullptr;
+    QByteArray m_data;
 
     FFTWorkThread *m_fftWorkThread;
     QThread *thread;

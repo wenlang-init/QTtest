@@ -73,6 +73,44 @@ void audioObject::setSinkVolume(qreal volume)
     emit setSinkVolumeSig(volume);
 }
 
+void audioObject::writeAudioData(QByteArray rdata, QAudioFormat format)
+{
+    if (m_audioSinkPCM) {
+        delete m_audioSinkPCM;
+    }
+
+    if (buffer) {
+        delete buffer;
+    }
+
+    m_data = rdata;
+    m_audioSinkPCM = new QAudioSink(format, this);
+    buffer = new QBuffer(&m_data, this);
+
+    if (false == buffer->open(QIODevice::ReadOnly)) {
+        delete m_audioSinkPCM;
+        delete buffer;
+        m_audioSinkPCM = nullptr;
+        buffer = nullptr;
+        m_data.clear();
+        return;
+    }
+
+    m_audioSinkPCM->start(buffer);
+
+    connect(m_audioSinkPCM, &QAudioSink::stateChanged, this,
+            [ = ](QAudio::State state) {
+        if (state == QAudio::IdleState) {
+            m_audioSinkPCM->stop();
+            delete m_audioSinkPCM;
+            delete buffer;
+            m_audioSinkPCM = nullptr;
+            buffer = nullptr;
+            m_data.clear();
+        }
+    });
+}
+
 void audioObject::readAudioData()
 {
     if (!m_ioSource) return;
@@ -172,11 +210,11 @@ void audioObject::connectInit()
         // connect(m_audioSink, &QAudioSink::stateChanged, this,
         //         [ = ](QAudio::State) {});
 
-        QIODevice *ioSink = m_audioSink->start();
+        m_ioSink = m_audioSink->start();
         disconnect(this, &audioObject::readData_private, this, nullptr);
         connect(this, &audioObject::readData_private, this,
                 [ = ](QByteArray& rdata) {
-            if (m_audioSink) ioSink->write(rdata);
+            if (m_ioSink) m_ioSink->write(rdata);
         });
     });
 
@@ -185,6 +223,7 @@ void audioObject::connectInit()
             m_audioSink->stop();
             delete m_audioSink;
             m_audioSink = nullptr;
+            m_ioSink = nullptr;
         }
     });
 

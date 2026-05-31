@@ -185,6 +185,9 @@ widegtFFT::widegtFFT(QWidget *parent) :
     init();
     initPlot();
 
+    connect(this,           &widegtFFT::writeAudioSig,
+            m_audioObject, &audioObject::writeAudioData);
+
     connect(ui->pushButton, &QPushButton::clicked, this, [ = ]() {
         if (m_audioIsOpen) return;
 
@@ -214,11 +217,48 @@ widegtFFT::widegtFFT(QWidget *parent) :
         QVector<double>dsdata;
         QVector<double>fftdata;
         int channalCount = ui->spinBox->value();
-        int byteRate = ui->spinBox2->value();
+        int byteRate = ui->spinBox2->value() / 8;
         m_AudioSourceSample = ui->spinBox3->value();
         m_windowSize = 2048;
+
         fftw3Object::fft(data, dsdata, fftdata, channalCount, byteRate,
                          m_windowSize, m_windowSize / 2);
+
+        {
+            // QMediaDevices devices;
+            // QAudioFormat format =
+            // devices.defaultAudioOutput().preferredFormat();
+            QAudioFormat format;
+            format.setChannelCount(channalCount);
+            format.setSampleRate(m_AudioSourceSample);
+
+            if (byteRate == 2) {
+                format.setSampleFormat(QAudioFormat::Int16);
+            } else if (byteRate == 4) {
+                format.setSampleFormat(QAudioFormat::Float);
+            } else {
+                format.setSampleFormat(QAudioFormat::UInt8);
+            }
+#if 1
+
+            // 播放pcm
+            emit writeAudioSig(data, format);
+#else // if 1
+            QAudioSink audioSink(format);
+            QBuffer buffer(&data);
+            buffer.open(QIODevice::ReadOnly);
+            QEventLoop loop;
+            connect(&audioSink, &QAudioSink::stateChanged, this,
+                    [&loop](QAudio::State state) {
+                if (QAudio::ActiveState != state) {
+                    loop.quit();
+                }
+            });
+            audioSink.start(&buffer);
+            loop.exec();
+
+#endif // if 1
+        }
 
         readData(data);
         QList<QVector<double> >_fftdata;

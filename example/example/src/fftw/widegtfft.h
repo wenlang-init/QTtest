@@ -38,6 +38,11 @@ protected slots:
     void fftwData(QVector<double>        dsdata,
                   QList<QVector<double> >fftdata);
 
+signals:
+
+    void writeAudioSig(QByteArray   data,
+                       QAudioFormat format);
+
 protected:
 
     void initPlot();
