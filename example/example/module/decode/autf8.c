@@ -189,6 +189,58 @@ int UTF8_putc(unsigned char *str, int len, unsigned long value)
     return 6;
 }
 
+#if 0
+// 使用ICU库判断
+#include <unicode/uchar.h>
+
+int isCombiningCharacter(uint32_t unicode) {
+    UCharCategory category = u_charType(unicode);
+
+    //UBool u_isalpha(UChar32 c);        // 是否为字母
+    //UBool u_isdigit(UChar32 c);        // 是否为数字
+    //UBool u_isspace(UChar32 c);        // 是否为空白
+    //UBool u_ispunct(UChar32 c);        // 是否为标点
+
+    // 判断是否为组合标记
+    // “一般类别”均为 Mn (非间距标记)、Mc (间距组合标记) 或 Me (包围标记
+    if (category == U_NON_SPACING_MARK ||    // Mn
+        category == U_COMBINING_SPACING_MARK || // Mc
+        category == U_ENCLOSING_MARK) {      // Me
+        return 1;
+    }
+
+    return 0;
+}
+#else
+int isCombiningCharacter(unsigned long unicode)
+{
+    // Unicode 组合字符范围
+    if ((unicode >= 0x0300 && unicode <= 0x036F)    || // Combining Diacritical Marks(组合用附加符号)
+        (unicode >= 0x1AB0 && unicode <= 0x1AFF)    || // Combining Diacritical Marks Extended(组合用附加符号扩展)
+        (unicode >= 0x1DC0 && unicode <= 0x1DFF)    || // Combining Diacritical Marks Supplement(组合用附加符号补充)
+        (unicode >= 0x20D0 && unicode <= 0x20FF)    || // Combining Diacritical Marks for Symbols(组合用记号附加符号)
+        (unicode >= 0xFE20 && unicode <= 0xFE2F)    || // Combining Half Marks(组合用半符号)
+        (unicode >= 0x135D && unicode <=  0x135F)    // 埃塞俄比亚文
+            // ......
+            )
+    {
+        return 1; // 组合字符
+    }
+    //  VARIATION SELECTOR-16。它实是一种特殊类型的组合字符，
+    // 但它的作用与传统的变音符号（如U+0301 重音符）完全不同。
+    // 它的核心作用是：告诉系统，应将前面的那个基础字符渲染为
+    // “表情符号样式”（Emoji Style），而不是“文本样式”（Text Style）。
+    // U+FE0F不是用来组合新字母的，而是用来切换已有字符的显示模式(表情符号开关)
+    if((unicode >= 0xFE00 && unicode <= 0xFE0F) || // 标准 变体选择器补充字符 VS1~VS16
+           (unicode >= 0xE0100 && unicode <= 0xE01EF) // 补充 变体选择器补充字符
+            )
+    {
+        return 2; // 变体选择符
+    };
+    return 0;
+}
+#endif
+
 int unicode2gbk(unsigned long unicode, char *gbk)
 {
     unsigned short gbk16;

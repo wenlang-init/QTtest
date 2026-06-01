@@ -21,6 +21,9 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     Charts
     #OpenGL
     OpenGLWidgets
+    #Qml
+    QuickControls2
+    CorePrivate
 )
 
 # 设置项目范围默认为标准安排。该命令在Qt6包的Core组件中定义，可以像这样加载：
@@ -83,6 +86,15 @@ set(MODULE_SOURCES
 
     src/cpu/funchelper.cpp
     src/cpu/funchelper.h
+
+    src/souyin/shouyinw.cpp
+    src/souyin/shouyinw.h
+    src/souyin/shouyinw.ui
+    src/souyin/quickw.cpp
+    src/souyin/quickw.h
+    src/souyin/usecode.h
+    src/souyin/usecode.cpp
+
 
     ${mwsources}
     ${videosources}
@@ -222,6 +234,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::Charts
     #Qt${QT_VERSION_MAJOR}::OpenGL
     Qt${QT_VERSION_MAJOR}::OpenGLWidgets
+    #Qt${QT_VERSION_MAJOR}::Qml
+    Qt${QT_VERSION_MAJOR}::QuickControls2
+    Qt${QT_VERSION_MAJOR}::CorePrivate
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -230,6 +245,16 @@ target_link_libraries(${PROJECT_NAME}
         plot
         decodepublic
 )
+# 是否不显示控制台窗口 WIN32_EXECUTABLE属性指定了是否为Windows应用程序生成一个控制台窗口。
+# 默认情况下，CMake会根据项目类型自动设置这个属性，但在某些情况下，你可能需要手动调整它以满足你的需求。
+if(WIN32)
+    # if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    #     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE OFF)
+    # else()
+    #      set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE ON)
+    # endif()
+    set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE OFF)
+endif()
 
 # fftw 库
 set(FFTWPATH ${PROJECT_SOURCE_DIR}/thirdparty/fftw)

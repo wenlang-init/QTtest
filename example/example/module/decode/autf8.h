@@ -28,6 +28,10 @@ int UTF8_getc(const unsigned char *str, int len, unsigned long *val);
 */
 int UTF8_putc(unsigned char *str, int len, unsigned long value);
 
+// 判断是否是组合字符段(unicode)
+// 返回0: 不是组合字符或变体选择符
+int isCombiningCharacter(unsigned long unicode);
+
 /*
  * Unicode to GBK
  * 注意: 目标字符串长度必须大于等于 2 字节(16bit),有效数据为前2字节

@@ -17,6 +17,7 @@
 #include "src/qmlList/listw.h"
 #include "src/audio/widget.h"
 #include "src/layout/wlayout.h"
+#include "src/souyin/shouyinw.h"
 
 // #include "lognone.h"
 #if !defined(Q_OS_ANDROID)
@@ -241,32 +242,68 @@ int main(int argc, char *argv[])
                 qDebug() << "widegtFFT -------" << w;
             });
         } else if (str == "2") {
-            static videoWidget w;
-            w.resize(600, 600);
-            w.show();
+            videoWidget *w = new videoWidget;
+            w->resize(600, 600);
+            w->show();
+            w->setAttribute(Qt::WA_DeleteOnClose, true);
+            QObject::connect(w, &videoWidget::destroyed, [&]() {
+                qDebug() << "videoWidget -------" << w;
+            });
         } else if (str == "3") {
-            static ListMessageView w;
-            w.resize(600, 600);
-            w.show();
+            ListMessageView *w = new ListMessageView;
+            w->resize(600, 600);
+            w->show();
+            w->setAttribute(Qt::WA_DeleteOnClose, true);
+            QObject::connect(w, &ListMessageView::destroyed, [&]() {
+                qDebug() << "ListMessageView -------" << w;
+            });
         } else if (str == "4") {
-            static GraphicsWidget w;
-            w.resize(600, 600);
-            w.show();
+            GraphicsWidget *w = new GraphicsWidget;
+            w->resize(600, 600);
+            w->show();
+            w->setAttribute(Qt::WA_DeleteOnClose, true);
+            QObject::connect(w, &GraphicsWidget::destroyed, [&]() {
+                qDebug() << "GraphicsWidget -------" << w;
+            });
         } else if (str == "5") {
-            static ListW w;
-            w.resize(600, 600);
-            w.show();
+            ListW *w = new ListW;
+            w->resize(600, 600);
+            w->show();
+            w->setAttribute(Qt::WA_DeleteOnClose, true);
+            QObject::connect(w, &ListW::destroyed, [&]() {
+                qDebug() << "ListW -------" << w;
+            });
         } else if (str == "6") {
-            static Widget w;
-            w.resize(600, 600);
-            w.show();
+            Widget *w = new Widget;
+            w->resize(600, 600);
+            w->show();
+            w->setAttribute(Qt::WA_DeleteOnClose, true);
+            QObject::connect(w, &Widget::destroyed, [&]() {
+                qDebug() << "Widget -------" << w;
+            });
         } else if (str == "7") {
-            static wLayout w;
-            w.resize(600, 600);
-            w.show();
-        }  else {
-            static MainWindow w;
-            w.show();
+            wLayout *w = new wLayout;
+            w->resize(600, 600);
+            w->show();
+            w->setAttribute(Qt::WA_DeleteOnClose, true);
+            QObject::connect(w, &wLayout::destroyed, [&]() {
+                qDebug() << "wLayout -------" << w;
+            });
+        } else if (str == "8") {
+            ShouYinW *w = new ShouYinW;
+            w->resize(600, 600);
+            w->show();
+            w->setAttribute(Qt::WA_DeleteOnClose, true);
+            QObject::connect(w, &ShouYinW::destroyed, [&]() {
+                qDebug() << "ShouYinW -------" << w;
+            });
+        } else {
+            MainWindow *w = new MainWindow;
+            w->show();
+            w->setAttribute(Qt::WA_DeleteOnClose, true);
+            QObject::connect(w, &MainWindow::destroyed, [&]() {
+                qDebug() << "MainWindow -------" << w;
+            });
         }
     } else {
         widegtFFT *w = new widegtFFT;

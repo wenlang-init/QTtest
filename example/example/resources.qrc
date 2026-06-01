@@ -7,5 +7,6 @@
         <file>src/layout/resource/pic/01.jpg</file>
         <file>src/layout/resource/pic/02.jpg</file>
         <file>src/layout/resource/pic/avatar.png</file>
+        <file>src/souyin/edittxt.qml</file>
     </qresource>
 </RCC>

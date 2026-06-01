@@ -9,3 +9,5 @@ AIDialog
 nettunnel/shellbuild/linux-x64/build
 example/example/build
 example/example/.qmlls.ini
+example/example/thirdparty/fftw/W64-3.3.5/*.exp
+example/example/thirdparty/fftw/W64-3.3.5/*.lib
