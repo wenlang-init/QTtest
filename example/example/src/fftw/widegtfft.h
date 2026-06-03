@@ -8,6 +8,7 @@
 #include "udpobject.h"
 #include "ffmpegobject.h"
 #include "linechartwidget.h"
+#include "gensignalwidget.h"
 
 #define USEDXXWPLOT
 #ifdef USEDXXWPLOT
@@ -51,6 +52,7 @@ protected:
 
 private:
 
+    genSignalWidget *m_genSignalWidget;
     Ui::widegtFFT *ui;
     audioObject *m_audioObject;
     udpObject m_udpObject;

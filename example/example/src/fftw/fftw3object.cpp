@@ -1,135 +1,209 @@
 #include "fftw3object.h"
-#include "cxxlog.h"
 #include <QtEndian>
-
-static void test()
-{
-    int N = 1024;
-    int i;
-    fftw_complex *din, *out;
-    fftw_plan     p;
-
-    din = (fftw_complex *)fftw_malloc(sizeof(fftw_complex) * N);
-    out = (fftw_complex *)fftw_malloc(sizeof(fftw_complex) * N);
-
-    if ((din == NULL) || (out == NULL))
-    {
-        FATAL_LOG_CXX("Error:insufficient available memory\n");
-    }
-    else
-    {
-        for (i = 0; i < N; i++) /*测试数据*/
-        {
-            din[i][0] = i + 1;
-            din[i][1] = 0;
-        }
-    }
-    p = fftw_plan_dft_1d(N, din, out, FFTW_FORWARD, FFTW_ESTIMATE);
-    fftw_execute(p); /* repeat as needed */
-    fftw_destroy_plan(p);
-    fftw_cleanup();
-
-    INFO_LOG_CXX("OUTPUT:\n");
-
-    for (i = 0; i < N; i++) /*OUTPUT*/
-    {
-        printf("%f,%fi\n", din[i][0], din[i][1]);
-    }
-    printf("\n");
-
-    for (i = 0; i < N; i++) /*OUTPUT*/
-    {
-        printf("%f,%fi\n", out[i][0], out[i][1]);
-    }
-    fflush(stdout);
-
-    if (din != NULL) fftw_free(din);
-
-    if (out != NULL) fftw_free(out);
-}
 
 fftw3Object::fftw3Object(QObject *parent)
     : QObject{parent}
-{
-    // test();
-}
+{}
 
 fftw3Object::~fftw3Object()
 {
     fftStreamSop();
 }
 
-bool fftw3Object::fft(const QByteArray& sdata,
-                      QVector<double> & dsdata,
-                      QVector<double> & fftdata,
-                      QVector<double> & radiandata,
-                      int               channalCount,
-                      int               byteRate,
-                      int               windowSize,
-                      int               overlap,
-                      bool              is_little)
+void fftw3Object::generateSignalData(QByteArray & data,
+                                     WaveformType sigleType,
+                                     int          dataCount,
+                                     int          frequency,
+                                     double       magnitude,
+                                     double       firstPhase,
+                                     int          channalCount,
+                                     int          sampleRate,
+                                     signaType    bitType,
+                                     bool         isLittle)
 {
-    QVector<double> tmpData;
-    int size = sdata.size();
-    int count = size / byteRate;
+    data.clear();
 
-    dsdata.clear();
-
-    if (byteRate == 2) {
-        const qint16 *p = (qint16 *)sdata.data();
-
-        for (int i = 0; i < count; i += channalCount) {
-            double v;
-
-            if (is_little) {
-                v = qFromLittleEndian(p[i]);
-            } else {
-                v = qFromBigEndian(p[i]);
-            }
-            v = v / 32768.0; // 归一化
-            tmpData.append(v);
-            dsdata.append(p[i]);
-
-            // for (int j = i; j < i + channalCount; j++) dsdata.append(p[j]);
+    switch (bitType) {
+    case UINT8: {
+        try {
+            WaveformGenerator<unsigned char> eGen(sampleRate,
+                                                  frequency,
+                                                  magnitude,
+                                                  firstPhase,
+                                                  channalCount,
+                                                  sigleType);
+            data.append(eGen.generateBlock(dataCount));
+        } catch (const std::exception& e) {
+            FATAL_LOG_CXX("Error: %s\n", e.what());
+            return;
         }
-    } else if (byteRate == 4) {
-        // const qint32 *p = (qint32 *)sdata.data();
-
-        // for (int i = 0; i < count; i+=channalCount) {
-        //     double v = p[i];
-        //     v = v / (0x7fffffff); // 归一化
-        //     tmpData.append(v);
-        // }
-
-        // float
-        const float *p = (float *)sdata.data();
-
-        for (int i = 0; i < count; i += channalCount) {
-            double v;
-
-            if (is_little) {
-                v = qFromLittleEndian(p[i]);
-            } else {
-                v = qFromBigEndian(p[i]);
-            }
-            tmpData.append(v);
-            dsdata.append(p[i]);
-
-            // for (int j = i; j < i + channalCount; j++) dsdata.append(p[j]);
-        }
-    } else {
-        const qint8 *p = (qint8 *)sdata.data();
-
-        for (int i = 0; i < count; i += channalCount) {
-            double v = p[i];
-            v = v / 127.0; // 归一化
-            tmpData.append(v);
-            dsdata.append(p[i]);
-
-            // for (int j = i; j < i + channalCount; j++) dsdata.append(p[j]);
-        }
+        break;
     }
 
+    case INT8: {
+        try {
+            WaveformGenerator<char> eGen(sampleRate,
+                                         frequency,
+                                         magnitude,
+                                         firstPhase,
+                                         channalCount,
+                                         sigleType);
+            data.append(eGen.generateBlock(dataCount));
+        } catch (const std::exception& e) {
+            FATAL_LOG_CXX("Error: %s\n", e.what());
+            return;
+        }
+        break;
+    }
+
+    case UINT16: {
+        try {
+            WaveformGenerator<unsigned short> eGen(sampleRate,
+                                                   frequency,
+                                                   magnitude,
+                                                   firstPhase,
+                                                   channalCount,
+                                                   sigleType);
+            auto gen = eGen.generateBlock(dataCount);
+
+            for (int i = 0; i < gen.size(); i += channalCount) {
+                unsigned short v = gen[i];
+
+                if (isLittle) {
+                    v = qToLittleEndian(gen[i]);
+                } else {
+                    v = qToBigEndian(gen[i]);
+                }
+                data.append((char *)&v, sizeof(v));
+            }
+        } catch (const std::exception& e) {
+            FATAL_LOG_CXX("Error: %s\n", e.what());
+            return;
+        }
+        break;
+    }
+
+    case INT16: {
+        try {
+            WaveformGenerator<short> eGen(sampleRate,
+                                          frequency,
+                                          magnitude,
+                                          firstPhase,
+                                          channalCount,
+                                          sigleType);
+            auto gen = eGen.generateBlock(dataCount);
+
+            for (int i = 0; i < gen.size(); i += channalCount) {
+                short v = gen[i];
+
+                if (isLittle) {
+                    v = qToLittleEndian(gen[i]);
+                } else {
+                    v = qToBigEndian(gen[i]);
+                }
+                data.append((char *)&v, sizeof(v));
+            }
+        } catch (const std::exception& e) {
+            FATAL_LOG_CXX("Error: %s\n", e.what());
+            return;
+        }
+        break;
+    }
+
+    case UINT32: {
+        try {
+            WaveformGenerator<unsigned int> eGen(sampleRate,
+                                                 frequency,
+                                                 magnitude,
+                                                 firstPhase,
+                                                 channalCount,
+                                                 sigleType);
+            auto gen = eGen.generateBlock(dataCount);
+
+            for (int i = 0; i < gen.size(); i += channalCount) {
+                unsigned int v = gen[i];
+
+                if (isLittle) {
+                    v = qToLittleEndian(gen[i]);
+                } else {
+                    v = qToBigEndian(gen[i]);
+                }
+                data.append((char *)&v, sizeof(v));
+            }
+        } catch (const std::exception& e) {
+            FATAL_LOG_CXX("Error: %s\n", e.what());
+            return;
+        }
+        break;
+    }
+
+    case INT32: {
+        try {
+            WaveformGenerator<int> eGen(sampleRate,
+                                        frequency,
+                                        magnitude,
+                                        firstPhase,
+                                        channalCount,
+                                        sigleType);
+            auto gen = eGen.generateBlock(dataCount);
+
+            for (int i = 0; i < gen.size(); i += channalCount) {
+                int v = gen[i];
+
+                if (isLittle) {
+                    v = qToLittleEndian(gen[i]);
+                } else {
+                    v = qToBigEndian(gen[i]);
+                }
+                data.append((char *)&v, sizeof(v));
+            }
+        } catch (const std::exception& e) {
+            FATAL_LOG_CXX("Error: %s\n", e.what());
+            return;
+        }
+        break;
+    }
+
+    case FLOAT: {
+        try {
+            WaveformGenerator<float> eGen(sampleRate,
+                                          frequency,
+                                          magnitude,
+                                          firstPhase,
+                                          channalCount,
+                                          sigleType);
+            auto gen = eGen.generateBlock(dataCount);
+
+            for (int i = 0; i < gen.size(); i++) {
+                float v = gen[i];
+
+                if (isLittle) {
+                    v = qToLittleEndian(gen[i]);
+                } else {
+                    v = qToBigEndian(gen[i]);
+                }
+                data.append((char *)&v, sizeof(v));
+            }
+        } catch (const std::exception& e) {
+            FATAL_LOG_CXX("Error: %s\n", e.what());
+            return;
+        }
+        break;
+    }
+
+    default:
+        break;
+    }
+}
+
+bool fftw3Object::fft(const QVector<double>& sdata,
+                      QVector<double>      & fftdata,
+                      QVector<double>      & radiandata,
+                      int                    channalCount,
+                      int                    windowSize,
+                      int                    overlap)
+{
+    const QVector<double>& tmpData = sdata;
 
     QVector<double> window(windowSize);
 
@@ -206,6 +280,155 @@ bool fftw3Object::fft(const QByteArray& sdata,
     fftw_free(in);
     fftw_free(out);
     return true;
+}
+
+bool fftw3Object::fft(const QByteArray& sdata,
+                      QVector<double> & dsdata,
+                      QVector<double> & fftdata,
+                      QVector<double> & radiandata,
+                      int               channalCount,
+                      signaType         bitType,
+                      int               windowSize,
+                      int               overlap,
+                      bool              is_little)
+{
+    QVector<double> tmpData;
+    int size = sdata.size();
+
+    dsdata.clear();
+    int count;
+
+    switch (bitType) {
+    case UINT8: {
+        count = size;
+        double maxVal_ = std::numeric_limits<quint8>::max();
+        const quint8 *p = (quint8 *)sdata.data();
+
+        for (int i = 0; i < count; i += channalCount) {
+            double v = p[i];
+            v = v / maxVal_; // 归一化
+            tmpData.append(v);
+            dsdata.append(p[i]);
+        }
+        break;
+    }
+
+    case INT8: {
+        count = size;
+        double maxVal_ = std::numeric_limits<qint8>::max();
+        const qint8 *p = (qint8 *)sdata.data();
+
+        for (int i = 0; i < count; i += channalCount) {
+            double v = p[i];
+            v = v / maxVal_; // 归一化
+            tmpData.append(v);
+            dsdata.append(p[i]);
+        }
+        break;
+    }
+
+    case UINT16: {
+        count = size / 2;
+        const quint16 *p = (quint16 *)sdata.data();
+        double maxVal_ = std::numeric_limits<quint16>::max();
+
+        for (int i = 0; i < count; i += channalCount) {
+            double v;
+
+            if (is_little) {
+                v = qFromLittleEndian(p[i]);
+            } else {
+                v = qFromBigEndian(p[i]);
+            }
+            v = v / maxVal_; // 归一化
+            tmpData.append(v);
+            dsdata.append(p[i]);
+        }
+        break;
+    }
+
+    case UINT32: {
+        count = size / 4;
+        const quint32 *p = (quint32 *)sdata.data();
+        double maxVal_ = std::numeric_limits<quint32>::max();
+
+        for (int i = 0; i < count; i += channalCount) {
+            double v;
+
+            if (is_little) {
+                v = qFromLittleEndian(p[i]);
+            } else {
+                v = qFromBigEndian(p[i]);
+            }
+            v = v / maxVal_; // 归一化
+            tmpData.append(v);
+            dsdata.append(p[i]);
+        }
+        break;
+    }
+
+    case INT32: {
+        count = size / 4;
+        const qint32 *p = (qint32 *)sdata.data();
+        double maxVal_ = std::numeric_limits<qint32>::max();
+
+        for (int i = 0; i < count; i += channalCount) {
+            double v;
+
+            if (is_little) {
+                v = qFromLittleEndian(p[i]);
+            } else {
+                v = qFromBigEndian(p[i]);
+            }
+            v = v / maxVal_; // 归一化
+            tmpData.append(v);
+            dsdata.append(p[i]);
+        }
+        break;
+    }
+
+    case FLOAT: {
+        count = size / 4;
+        const float *p = (float *)sdata.data();
+
+        for (int i = 0; i < count; i += channalCount) {
+            double v;
+
+            if (is_little) {
+                v = qFromLittleEndian(p[i]);
+            } else {
+                v = qFromBigEndian(p[i]);
+            }
+            tmpData.append(v);
+            dsdata.append(p[i]);
+        }
+        break;
+    }
+
+    case INT16: {
+        count = size / 2;
+        const qint16 *p = (qint16 *)sdata.data();
+        double maxVal_ = std::numeric_limits<qint16>::max();
+
+        for (int i = 0; i < count; i += channalCount) {
+            double v;
+
+            if (is_little) {
+                v = qFromLittleEndian(p[i]);
+            } else {
+                v = qFromBigEndian(p[i]);
+            }
+            v = v / maxVal_; // 归一化
+            tmpData.append(v);
+            dsdata.append(p[i]);
+        }
+    }
+
+    default:
+        break;
+    }
+
+    return fft(tmpData, fftdata, radiandata, channalCount, windowSize, overlap);
 }
 
 bool fftw3Object::fftStreamStart(int windowSize, int overlap)
@@ -329,118 +552,3 @@ void fftw3Object::fftStreamSop()
     m_output = nullptr;
     m_window = nullptr;
 }
-
-////////////////////////
-
-
-#if 0
-# include <fftw3.h>
-# include <stdio.h>
-# include <stdlib.h>
-# include <string.h>
-# include <math.h>
-
-# define BUFFER_SIZE 1024                     // FFT点数
-# define OVERLAP      512                     // 重叠点数 (50% 重叠)
-# define STEP_SIZE    (BUFFER_SIZE - OVERLAP) // 每次向前移动的步长
-
-// 预计算窗函数 (如汉宁窗)
-double* generate_hanning_window(int n) {
-    double *window = (double *)fftw_malloc(sizeof(double) * n);
-
-    for (int i = 0; i < n; ++i) {
-        window[i] = 0.5 * (1.0 - cos(2.0 * M_PI * i / (n - 1)));
-    }
-    return window;
-}
-
-// 对单个数据块应用窗函数
-void apply_window(double *data, double *window, int n) {
-    for (int i = 0; i < n; ++i) {
-        data[i] *= window[i];
-    }
-}
-
-int adafafa() {
-    // --- 1. 初始化 FFTW ---
-    double *input = fftw_alloc_real(BUFFER_SIZE);
-    fftw_complex *output = fftw_alloc_complex(BUFFER_SIZE / 2 + 1);
-
-    // 关键：只创建一次 plan
-    fftw_plan plan = fftw_plan_dft_r2c_1d(BUFFER_SIZE,
-                                          input,
-                                          output,
-                                          FFTW_ESTIMATE);
-
-    // --- 2. 初始化窗函数 ---
-    double *hanning_window = generate_hanning_window(BUFFER_SIZE);
-
-    // --- 3. 模拟数据流、重叠缓冲区与文件操作 (此处简化)---
-    // 实际应用中，您需要从音频设备、传感器等读取float数据流。
-    // 这里我们用一段模拟数据来演示流程。
-    int total_samples = 5000;
-    float *simulated_data = (float *)malloc(total_samples * sizeof(float));
-
-    for (int i = 0; i < total_samples; ++i) {
-        // 模拟一个频率为 1000Hz 的正弦波，采样率 44100Hz
-        simulated_data[i] = sin(2 * M_PI * 1000.0 * i / 44100.0);
-    }
-
-    // 用于存储重叠数据的环形缓冲区，此处使用简单数组模拟
-    double ring_buffer[BUFFER_SIZE] = { 0 };
-    int    read_pos = 0; // 模拟数据读取位置
-
-    while (read_pos < total_samples) {
-        // --- 3.1 从数据流中填充数据到环形缓冲区 ---
-        // 移动操作，将 buffer 中 [STEP_SIZE, BUFFER_SIZE) 的数据移到前面
-        // 然后从 read_pos 处读取新数据填充到尾部。
-        // 这一部分逻辑根据具体应用实现，此处为简化示意。
-
-        // 演示代码：直接拷贝一段数据到 input (缺少重叠逻辑)
-        int remaining = total_samples - read_pos;
-        int to_copy = STEP_SIZE < remaining ? STEP_SIZE : remaining;
-
-        // 简单移位 (实际应为更高效的memmove)
-        for (int i = 0; i < BUFFER_SIZE - STEP_SIZE; i++) {
-            ring_buffer[i] = ring_buffer[i + STEP_SIZE];
-        }
-
-        for (int i = 0; i < to_copy; i++) {
-            ring_buffer[BUFFER_SIZE - STEP_SIZE +
-                        i] = simulated_data[read_pos + i];
-        }
-
-        if (to_copy < STEP_SIZE) {
-            break; // 剩余样本不足一个处理步长，处理结束
-        }
-
-        // 将环形缓冲区数据拷贝到 FFT 输入
-        memcpy(input, ring_buffer, BUFFER_SIZE * sizeof(double));
-
-        // --- 3.2 应用窗函数 ---
-        apply_window(input, hanning_window, BUFFER_SIZE);
-
-        // --- 3.3 执行FFT ---
-        fftw_execute(plan); // 实时处理的核心：只调用 execute
-
-        // --- 3.4 处理频域数据 (计算幅度谱等)---
-        for (int i = 0; i < BUFFER_SIZE / 2 + 1; ++i) {
-            double magnitude = sqrt(
-                output[i][0] * output[i][0] + output[i][1] * output[i][1]);
-            printf("Block: freq idx %d: mag = %f\n", i, magnitude);
-        }
-
-        read_pos += STEP_SIZE;
-    }
-
-    // --- 4. 清理资源 ---
-    fftw_destroy_plan(plan);
-    fftw_free(input);
-    fftw_free(output);
-    fftw_free(hanning_window);
-    free(simulated_data);
-
-    return 0;
-}
-
-#endif // if 1

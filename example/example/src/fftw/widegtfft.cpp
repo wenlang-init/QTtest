@@ -222,12 +222,22 @@ widegtFFT::widegtFFT(QWidget *parent) :
         m_AudioSourceSample = ui->spinBox3->value();
         m_windowSize = 2048;
 
+        fftw3Object::signaType bitType = fftw3Object::INT16;
+
+        if (byteRate == 1) {
+            bitType = fftw3Object::UINT8;
+        } else if (byteRate == 4) {
+            bitType = fftw3Object::FLOAT;
+        } else {
+            bitType = fftw3Object::INT16;
+        }
+
         fftw3Object::fft(data,
                          dsdata,
                          fftdata,
                          radiandata,
                          channalCount,
-                         byteRate,
+                         bitType,
                          m_windowSize,
                          m_windowSize / 2,
                          ui->checkBoxIsLittle->isChecked());
@@ -290,7 +300,6 @@ widegtFFT::widegtFFT(QWidget *parent) :
             if (!m_audioIsOpen) return;
 
             if (ui->checkBoxsavepcm->isChecked()) {
-// QDir::currentPath()
                 m_saveFileName =
                     QApplication::applicationDirPath() + "/" +
                     QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss")
@@ -357,6 +366,8 @@ widegtFFT::~widegtFFT()
     // delete m_audioObject;
     m_audioObject->deleteLater();
     delete ui;
+
+    delete m_genSignalWidget;
 }
 
 void widegtFFT::readData(QByteArray data)
@@ -401,7 +412,7 @@ void widegtFFT::readData(QByteArray data)
     {
         if (ui->checkBox->isChecked()) {
             if (ui->checkBoxsavepcm->isChecked()) {
-                m_savePCMFile.write(data);
+                if (m_savePCMFile.isOpen()) m_savePCMFile.write(data);
             } else {
                 m_ffmpegObject.saveToWav(data);
             }
@@ -496,6 +507,7 @@ void widegtFFT::fftwData(QVector<double>        dsdata,
                 for (int i = 0; i < _count; i++) {
                     double sample = m_AudioSourceSample; // ui->spinBox01->value()
                     double fs = 1.0 * i * sample / m_windowSize;
+                    fs /= 2;
 
                     if (i == 0) xmin = fs;
 
@@ -578,6 +590,7 @@ void widegtFFT::fftwData(QVector<double>        dsdata,
             for (int i = 0; i < _count; i++) {
                 double sample = m_AudioSourceSample; // ui->spinBox01->value()
                 double fs = 1.0 * i * sample / m_windowSize;
+                fs /= 2;
 
                 if (i == 0) xmin = fs;
 
@@ -619,6 +632,7 @@ void widegtFFT::fftwData(QVector<double>        dsdata,
         for (int i = 0; i < _count; i++) {
             double sample = m_AudioSourceSample;
             double fs = 1.0 * i * sample / m_windowSize;
+            fs /= 2;
 
             if (i == 0) xmin = fs;
 
@@ -853,6 +867,139 @@ void widegtFFT::initPlot() {
     checkBox13->setChecked(true);
     checkBox14->setChecked(true);
     checkBox15->setChecked(true);
+
+    m_genSignalWidget = new genSignalWidget;
+
+    // m_genSignalWidget->show();
+    connect(ui->pushButton_2, &QPushButton::clicked, this, [ = ]() {
+        if (m_genSignalWidget->isHidden()) {
+            m_genSignalWidget->show();
+        }
+    });
+
+    connect(m_genSignalWidget, &genSignalWidget::updateData, this, [ = ](
+                QByteArray data,
+                int        channalCount,
+                int        audioSample,
+                int        byteType,
+                bool       isLittle,
+                int        fftwindow,
+                bool       isupdate)
+    {
+        if (m_audioIsOpen) return;
+
+        fftw3Object::signaType _bitType = (fftw3Object::signaType)byteType;
+        int byteRate = 1;
+
+        switch (_bitType) {
+        case fftw3Object::UINT8:
+        case fftw3Object::INT8:
+            byteRate = 1;
+            break;
+
+        case fftw3Object::UINT16:
+        case fftw3Object::INT16:
+            byteRate = 2;
+            break;
+
+        case fftw3Object::UINT32:
+        case fftw3Object::INT32:
+        case fftw3Object::FLOAT:
+            byteRate = 4;
+            break;
+
+        default:
+            break;
+        }
+
+        if (!isupdate) {
+            m_xcount = 0;
+            m_xcount1 = 0;
+            m_customPlotCurve->m_customPlot->graph(
+                0)->data().data()->clear();
+            m_customPlotCurveSData->m_customPlot->graph(
+                0)->data().data()->clear();
+        }
+
+        QVector<double>dsdata;
+        QVector<double>fftdata;
+        QVector<double>radiandata;
+        m_AudioSourceSample = audioSample;
+        m_windowSize = fftwindow;
+        QString strtime;
+
+        {
+            // save
+            if (ui->checkBox->isChecked() && !isupdate) {
+                QString FileName =
+                    QApplication::applicationDirPath() + "/" +
+                    QDateTime::currentDateTime().toString("yyyyMMdd-hhmmss");
+
+                if (ui->checkBoxsavepcm->isChecked()) {
+                    FileName += ".pcm";
+                    QFile saveFile(FileName);
+
+                    if (saveFile.open(QIODevice::WriteOnly)) {
+                        saveFile.write(data);
+                    } else {
+                        qDebug() << saveFile.errorString();
+                    }
+                } else {
+// if(isLittle == false)// error;
+                    FileName += ".wav";
+                    int bitRate = 8 * byteRate;
+                    FfmpegObject fmo;
+                    fmo.saveToWavStart(FileName,
+                                       audioSample, bitRate, channalCount);
+                    fmo.saveToWav(data);
+                    fmo.saveToWavEnd();
+                }
+                ui->label->setText(FileName);
+                strtime = FileName.split("/").last();
+            }
+        }
+
+        strtime += " 时长: ";
+        qint64 times = data.size() /
+                       (1.0 * byteRate * m_AudioSourceSample * channalCount) * 1000;
+        strtime += QTime::fromMSecsSinceStartOfDay(times)
+                   .toString("hh:mm:ss.zzz");
+        ui->label->setText(strtime);
+
+        fftw3Object::fft(data,
+                         dsdata,
+                         fftdata,
+                         radiandata,
+                         channalCount,
+                         _bitType,
+                         m_windowSize,
+                         m_windowSize / 2,
+                         isLittle);
+
+        readData(data);
+        QList<QVector<double> >_fftdata;
+        _fftdata.append(fftdata);
+        QList<QVector<double> >_radiandata;
+        _radiandata.append(radiandata);
+        fftwData(dsdata, _fftdata, _radiandata);
+
+        if (0) {
+            QAudioFormat format;
+            format.setChannelCount(channalCount);
+            format.setSampleRate(m_AudioSourceSample);
+
+            if (byteRate == 2) {
+                format.setSampleFormat(QAudioFormat::Int16);
+            } else if (byteRate == 4) {
+                format.setSampleFormat(QAudioFormat::Float);
+            } else {
+                format.setSampleFormat(QAudioFormat::UInt8);
+            }
+
+            // 播放pcm
+            emit writeAudioSig(data, format);
+        }
+    });
 }
 
 void widegtFFT::init()

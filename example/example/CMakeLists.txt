@@ -78,6 +78,10 @@ set(fftsources
     src/fftw/linechartwidget.cpp
     src/fftw/widgetitem.h
     src/fftw/widgetitem.cpp
+    src/fftw/waveformgenerator.h
+    src/fftw/gensignalwidget.h
+    src/fftw/gensignalwidget.cpp
+    src/fftw/gensignalwidget.ui
 )
 
 set(MODULE_SOURCES
