@@ -5,15 +5,21 @@
 #include <QFile>
 #include <QtEndian>
 
+// #define TESTFFMPEG
+
+#ifdef TESTFFMPEG
 extern "C" {
-#include <libavformat/avformat.h>
+# include <libavformat/avformat.h>
 }
+#endif // ifdef TESTFFMPEG
 
 
 class FfmpegObject : public QObject {
     Q_OBJECT
 
 private:
+
+#ifdef TESTFFMPEG
 
     // 定义PCM输入参数的结构体（把参数打包，方便传递）
     typedef struct {
@@ -22,6 +28,7 @@ private:
         AVSampleFormat sampleFmt;  // 采样格式
         int            chLayout;   // 声道布局
     } AudioEncodeSpec;
+#endif // ifdef TESTFFMPEG
 #pragma pack(1)
     typedef struct _wave_header_t
     {
@@ -58,6 +65,7 @@ private:
 public:
 
     explicit FfmpegObject(QObject *parent = nullptr);
+#ifdef TESTFFMPEG
     static void getInfo();
     static void aacEncode(const QString      & filename,
                           const int            sampleRate,
@@ -65,7 +73,7 @@ public:
                           const int            channels,
                           const QString      & outFilename);
     static void aacEncode(AudioEncodeSpec & in, const char *outFilename);
-
+#endif // ifdef TESTFFMPEG
     int saveToWavStart(QString filename,
                        int     sampleRate = 44100,
                        int     bitRate = 16,

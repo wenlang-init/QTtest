@@ -550,34 +550,3 @@ void MainWindow::on_checkBox_checkStateChanged(const Qt::CheckState& arg1)
         customPlot->replot();
     }
 }
-
-// void testqmqtt() {
-//     QMqttClient *qmc = new QMqttClient;
-
-//     qmc->setHostname("127.0.0.1");
-//     qmc->setPort(1883);
-
-//     // qmc->publish(QMqttTopicName("topic"), "message info");
-//     // qmc->subscribe(QMqttTopicFilter("topic"));
-
-//     // connect(qmc, &QMqttClient::stateChanged, this,
-//     // [=](QMqttClient::ClientState state){});
-//     // connect(qmc, &QMqttClient::disconnected, this, [=](){});
-
-//     // connect(qmc, &QMqttClient::messageReceived, this, [this](const
-// QByteArray
-//     // &message, const QMqttTopicName &topic) {
-//     //     const QString content = QDateTime::currentDateTime().toString()
-//     //             + " Received Topic: "_L1
-//     //             + topic.name()
-//     //             + " Message: "_L1
-//     //             + message
-//     //             + u'\n';
-
-//     // });
-
-//     // connect(qmc, &QMqttClient::pingResponseReceived, this, [this]() {
-//     //     const QString content = QDateTime::currentDateTime().toString()
-//     //             + "PingResponse\n"_L1;
-//     // });
-// }

@@ -5,7 +5,7 @@
 #include <stdarg.h>
 
 // #include <string.h>
-#include <string>
+#include <cstring>
 #include <errno.h>
 #include <vector>
 #include <algorithm>

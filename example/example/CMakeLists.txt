@@ -11,9 +11,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
-    Widgets LinguistTools core sql quick
+    Widgets LinguistTools Core Sql Quick
     Multimedia
-    multimediawidgets
+    MultimediaWidgets
     QuickWidgets PrintSupport
     #Mqtt
     WebView
@@ -23,7 +23,7 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     OpenGLWidgets
     #Qml
     QuickControls2
-    CorePrivate
+    #CorePrivate
 )
 
 # 设置项目范围默认为标准安排。该命令在Qt6包的Core组件中定义，可以像这样加载：
@@ -107,7 +107,7 @@ set(MODULE_SOURCES
     ${audiosources}
     ${layoutsources}
 )
-if(WIN32 OR Linux)
+if(WIN32 OR LINUX)
     set(MODULE_SOURCES
         ${MODULE_SOURCES}
         ${fftsources}
@@ -119,6 +119,16 @@ set(PROJECT_SOURCES
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    homewidget.h
+    homewidget.cpp
+    src/desktop/bottom_icon.cpp
+    src/desktop/bottom_icon.h
+    src/desktop/desktopwidget.cpp
+    src/desktop/desktopwidget.h
+    src/desktop/custombtn.h
+    src/desktop/custombtn.cpp
+    src/desktop/basewidget.cpp
+    src/desktop/basewidget.h
     ${TS_FILES}
     ${MODULE_SOURCES}
 )
@@ -147,6 +157,18 @@ qt_add_executable(example
     MANUAL_FINALIZATION
     ${PROJECT_SOURCES}
     ${APP_RESOURCES}
+)
+
+target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/shellbulid/build.sh)
+target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/shellbulid/pack.sh)
+# 标记该文件为“仅头文件/非编译”
+set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/shellbulid/build.sh
+    PROPERTIES HEADER_FILE_ONLY TRUE
+)
+set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/shellbulid/pack.sh
+    PROPERTIES HEADER_FILE_ONLY TRUE
 )
 
 # 动态库
@@ -240,7 +262,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::OpenGLWidgets
     #Qt${QT_VERSION_MAJOR}::Qml
     Qt${QT_VERSION_MAJOR}::QuickControls2
-    Qt${QT_VERSION_MAJOR}::CorePrivate
+    #Qt${QT_VERSION_MAJOR}::CorePrivate
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -248,6 +270,7 @@ target_link_libraries(${PROJECT_NAME}
         log
         plot
         decodepublic
+        easyInput
 )
 # 是否不显示控制台窗口 WIN32_EXECUTABLE属性指定了是否为Windows应用程序生成一个控制台窗口。
 # 默认情况下，CMake会根据项目类型自动设置这个属性，但在某些情况下，你可能需要手动调整它以满足你的需求。
@@ -317,61 +340,68 @@ elseif(UNIX)
 endif()
 
 # ffmpeg 库
-set(FFTMPEGPATH ${PROJECT_SOURCE_DIR}/thirdparty/ffmpeg)
+# set(FFTMPEGPATH ${PROJECT_SOURCE_DIR}/thirdparty/ffmpeg)
+# if(WIN32)
+#     target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/windows/include)
+#     target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/windows/lib)
+
+#     target_link_libraries(${PROJECT_NAME} PRIVATE
+#         avcodec avformat avutil
+#         #swresample swscale avdevice avfilter
+#     )
+
+#     # add_custom_command(TARGET ${PROJECT_NAME}
+#     #    POST_BUILD
+#     #    COMMAND ${CMAKE_COMMAND} -E
+#     #         copy_if_different
+#     #         ${FFTMPEGPATH}/windows/bin/*.dll
+#     #         "${CMAKE_BINARY_DIR}"
+#     # )
+# elseif(UNIX)
+#     if(LINUX)
+#         target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/include)
+#         target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/lib)
+
+#         target_link_libraries(${PROJECT_NAME} PRIVATE
+#             avcodec avformat avutil
+#             #swresample swscale avdevice avfilter
+#         )
+#         #find_package(PkgConfig REQUIRED) # 如果找不到会直接报错，不需要手动判断
+#         # find_package(PkgConfig QUIET) # 找不到不会终止
+#         # if(PkgConfig_FOUND)
+#         #     pkg_check_modules(AVFORMAT REQUIRED libavformat)
+#         #     pkg_check_modules(AVCODEC REQUIRED libavcodec)
+#         #     pkg_check_modules(AVUTIL REQUIRED libavutil)
+#         #     target_include_directories(${PROJECT_NAME} PRIVATE ${AVFORMAT_INCLUDE_DIRS})
+#         #     target_include_directories(${PROJECT_NAME} PRIVATE ${AVCODEC_INCLUDE_DIRS})
+#         #     target_include_directories(${PROJECT_NAME} PRIVATE ${AVUTIL_INCLUDE_DIRS})
+#         #     target_link_libraries(${PROJECT_NAME} PRIVATE
+#         #         ${AVFORMAT_LIBRARIES} ${AVCODEC_LIBRARIES} ${AVUTIL_LIBRARIES}
+#         #     )
+#         # else()
+#         #     message(FATAL_ERROR "PkgConfig not found, cannot continue")
+#         #     # 设置 PKG_CONFIG_PATH 以支持非标准路径 (可选)
+#         #     set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${CUSTOM_FFMPEG_PATH}/lib/pkgconfig")
+#         #     pkg_check_modules(PC_FFMPEG QUIET libavcodec libavformat libavutil libswresample)
+#         #     if(NOT PC_FFMPEG_FOUND)
+#         #         # 引入已经存在的动态库avcodec
+#         #         #add_library(avcodec SHARED IMPORTED)
+#         #         #指定所添加依赖库的导入路径
+#         #         #set_target_properties(avcodec PROPERTIES IMPORTED_LOCATION ./libavcodec.so )
+
+#         #         target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/include)
+#         #         target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/lib)
+
+#         #         target_link_libraries(${PROJECT_NAME} PRIVATE
+#         #             avcodec avformat avutil
+#         #             #swresample swscale avdevice avfilter
+#         #         )
+#         #     endif()
+#         # endif()
+#     endif()
+# endif()
+
 if(WIN32)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/windows/include)
-    target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/windows/lib)
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        avcodec avformat avutil
-        #swresample swscale avdevice avfilter
-    )
-
-    # add_custom_command(TARGET ${PROJECT_NAME}
-    #    POST_BUILD
-    #    COMMAND ${CMAKE_COMMAND} -E
-    #         copy_if_different
-    #         ${FFTMPEGPATH}/windows/bin/*.dll
-    #         "${CMAKE_BINARY_DIR}"
-    # )
-elseif(UNIX)
-    if(LINUX)
-        #find_package(PkgConfig REQUIRED) # 如果找不到会直接报错，不需要手动判断
-        find_package(PkgConfig QUIET) # 找不到不会终止
-        if(PkgConfig_FOUND)
-            pkg_check_modules(AVFORMAT REQUIRED libavformat)
-            pkg_check_modules(AVCODEC REQUIRED libavcodec)
-            pkg_check_modules(AVUTIL REQUIRED libavutil)
-            target_include_directories(${PROJECT_NAME} PRIVATE ${AVFORMAT_INCLUDE_DIRS})
-            target_include_directories(${PROJECT_NAME} PRIVATE ${AVCODEC_INCLUDE_DIRS})
-            target_include_directories(${PROJECT_NAME} PRIVATE ${AVUTIL_INCLUDE_DIRS})
-            target_link_libraries(${PROJECT_NAME} PRIVATE
-                ${AVFORMAT_LIBRARIES} ${AVCODEC_LIBRARIES} ${AVUTIL_LIBRARIES}
-            )
-        else()
-            message(FATAL_ERROR "PkgConfig not found, cannot continue")
-            # 设置 PKG_CONFIG_PATH 以支持非标准路径 (可选)
-            set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${CUSTOM_FFMPEG_PATH}/lib/pkgconfig")
-            pkg_check_modules(PC_FFMPEG QUIET libavcodec libavformat libavutil libswresample)
-            if(NOT PC_FFMPEG_FOUND)
-                # 引入已经存在的动态库avcodec
-                #add_library(avcodec SHARED IMPORTED)
-                #指定所添加依赖库的导入路径
-                #set_target_properties(avcodec PROPERTIES IMPORTED_LOCATION ./libavcodec.so )
-
-                target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/include)
-                target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/lib)
-
-                target_link_libraries(${PROJECT_NAME} PRIVATE
-                    avcodec avformat avutil
-                    #swresample swscale avdevice avfilter
-                )
-            endif()
-        endif()
-    endif()
-endif()
-
-if(NOT ANDROID)
     target_link_libraries(${PROJECT_NAME}
         PUBLIC
             qbreakpads
@@ -385,6 +415,13 @@ endif()
 #     #COMPILE_FLAGS "-fsanitize=address"
 #     LINK_FLAGS "-fsanitize=address"
 # )
+
+if(LINUX)
+    # 设置可执行文件的 rpath，使其在运行时能够找到当前目录下的动态库
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        LINK_FLAGS "-Wl,-rpath=./"
+    )
+endif()
 
 #include(GNUInstallDirs)
 install(TARGETS ${PROJECT_NAME}
@@ -417,7 +454,8 @@ endif()
 add_subdirectory(module/log)
 add_subdirectory(module/plot)
 add_subdirectory(module/decode)
+add_subdirectory(module/easyInput)
 # add_subdirectory(module/Mqtt)
-if(NOT ANDROID)
+if(WIN32)
     add_subdirectory(module/qbreakpad)
 endif()

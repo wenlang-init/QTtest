@@ -47,6 +47,10 @@ bool udpObject::bindAll(qint16 port)
     if (isbind) return true;
 
     if (false == udpsocket->bind(QHostAddress::Any, port)) {
+        qWarning() << QString("bind failed,%1:%2,%3").
+            arg(udpsocket->localAddress().toString()).
+            arg(udpsocket->localPort()).
+            arg(udpsocket->errorString());
         return false;
     }
     isbind = true;

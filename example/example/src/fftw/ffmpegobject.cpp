@@ -1,14 +1,15 @@
 #include "ffmpegobject.h"
 #include <QDebug>
 #include <QFile>
+#ifdef TESTFFMPEG
 extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavutil/avutil.h>
+# include <libavcodec/avcodec.h>
+# include <libavutil/avutil.h>
 }
 
 // 错误信息宏（把FFmpeg的错误码转成文字）
-#define ERROR_BUF(ret) \
-    char errbuf[1024]; \
+# define ERROR_BUF(ret) \
+    char errbuf[1024];  \
     av_strerror(ret, errbuf, sizeof(errbuf));
 
 
@@ -59,10 +60,6 @@ static int encode(AVCodecContext *ctx,
         av_packet_unref(pkt);
     }
 }
-
-FfmpegObject::FfmpegObject(QObject *parent)
-    : QObject{parent}
-{}
 
 void FfmpegObject::getInfo()
 {
@@ -179,14 +176,14 @@ void FfmpegObject::aacEncode(const QString      & filename,
         return;
     }
 
-#if 1
+# if 1
 
     // 检查编码器是否支持我们的PCM采样格式（这里是16位整数）
     if (!check_sample_fmt(codec, sampleFmt)) {
         qDebug() << "编码器不支持该采样格式！";
         return;
     }
-#else // if 0
+# else // if 0
     int avcodec_get_supported_config(const AVCodecContext * avctx,
                                      const AVCodec *codec,
                                      enum AVCodecConfig config,
@@ -213,7 +210,7 @@ void FfmpegObject::aacEncode(const QString      & filename,
             qDebug() << str;
         }
     }
-#endif // if 0
+# endif // if 0
 
     // ===== 第三步：创建并配置编码器上下文 =====
     ctx = avcodec_alloc_context3(codec); // 分配上下文内存
@@ -341,14 +338,14 @@ void FfmpegObject::aacEncode(AudioEncodeSpec& in, const char *outFilename)
         return;
     }
 
-#if 0
+# if 0
 
     // 检查编码器是否支持我们的PCM采样格式（这里是16位整数）
     if (!check_sample_fmt(codec, in.sampleFmt)) {
         qDebug() << "编码器不支持该采样格式！";
         return;
     }
-#else // if 0
+# else // if 0
     int avcodec_get_supported_config(const AVCodecContext * avctx,
                                      const AVCodec *codec,
                                      enum AVCodecConfig config,
@@ -375,7 +372,7 @@ void FfmpegObject::aacEncode(AudioEncodeSpec& in, const char *outFilename)
             qDebug() << str;
         }
     }
-#endif // if 0
+# endif // if 0
 
     // ===== 第三步：创建并配置编码器上下文 =====
     ctx = avcodec_alloc_context3(codec); // 分配上下文内存
@@ -480,6 +477,12 @@ end:
 
     qDebug() << "编码完成！";
 }
+
+#endif // ifdef TESTFFMPEG
+
+FfmpegObject::FfmpegObject(QObject *parent)
+    : QObject{parent}
+{}
 
 int FfmpegObject::saveToWavStart(QString filename,
                                  int     sampleRate,

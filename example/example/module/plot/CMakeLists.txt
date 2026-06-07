@@ -27,7 +27,7 @@ set(PLOT_SOURCES
 # 静态库
 add_library(${PROJECT_NAME} ${PLOT_SOURCES})
 
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS core PrintSupport)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core PrintSupport)
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::PrintSupport)
 
 # 最新支持到6.4

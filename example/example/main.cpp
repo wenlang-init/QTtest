@@ -18,11 +18,13 @@
 #include "src/audio/widget.h"
 #include "src/layout/wlayout.h"
 #include "src/souyin/shouyinw.h"
+#include "homewidget.h"
+#include "input_method_widget.h"
 
 // #include "lognone.h"
-#if !defined(Q_OS_ANDROID)
+#if defined(Q_OS_WINDOWS)
 # include "QBreakpadHandler.h"
-#endif // if !defined(Q_OS_ANDROID)
+#endif // if defined(Q_OS_WINDOWS)
 #include "cxxlog.h"
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -67,9 +69,10 @@ BOOL WINAPI HandlerRoutine(DWORD dwCtrlType) {
 
 void handle_signal(int sig)
 {
-    INFO_LOG("wait log finish. systemsig=%d\n", sig);
-    destinyLog();
-    INFO_PRINT_LOG("write log finish. while exit\n");
+    INFO_LOG_CXX("wait log finish. systemsig=%d\n", sig);
+
+    // destinyLog();
+    // INFO_PRINT_LOG("write log finish. while exit\n");
     exit(0);
 }
 
@@ -152,11 +155,11 @@ int main(int argc, char *argv[])
 
     QtWebView::initialize();
 
-#if !defined(Q_OS_ANDROID)
+#if defined(Q_OS_WINDOWS)
 
     // dump 路径
     QBreakpadInstance.setDumpPath("./qbreakpad_dump");
-#endif // if !defined(Q_OS_ANDROID)
+#endif // if defined(Q_OS_WINDOWS)
 
 #if 0
 
@@ -229,6 +232,8 @@ int main(int argc, char *argv[])
                        << "\narg:" << qApp->arguments()
                        << "\norganization:" << qApp->organizationDomain()
                        << ";" << qApp->organizationName();
+
+    // SETAUTOSHOW_INPUT_METHOD_WIDGET();
 
     if (argc >= 2) {
         QString str = argv[1];
@@ -306,12 +311,12 @@ int main(int argc, char *argv[])
             });
         }
     } else {
-        widegtFFT *w = new widegtFFT;
-        w->resize(600, 600);
+        homewidget *w = new homewidget;
         w->show();
+        w->resize(600, 600);
         w->setAttribute(Qt::WA_DeleteOnClose, true);
-        QObject::connect(w, &widegtFFT::destroyed, [&]() {
-            qDebug() << "widegtFFT -------" << w;
+        QObject::connect(w, &homewidget::destroyed, [&]() {
+            qDebug() << "homewidget -------" << w;
         });
     }
 
