@@ -10,7 +10,7 @@
 #include <QFileDialog>
 #include "fftw3object.h"
 
-#define USE_TWO_XZHOU
+// #define USE_TWO_XZHOU
 
 template<typename T>
 inline static QString enumValueToKey(T tempValue)
@@ -506,7 +506,7 @@ void widegtFFT::fftwData(QVector<double>        dsdata,
 
                 for (int i = 0; i < _count; i++) {
                     double sample = m_AudioSourceSample; // ui->spinBox01->value()
-                    double fs = 1.0 * i * sample / m_windowSize;
+                    double fs = 1.0 * i * sample / (m_windowSize / 2.0);
                     fs /= 2;
 
                     if (i == 0) xmin = fs;
@@ -589,7 +589,7 @@ void widegtFFT::fftwData(QVector<double>        dsdata,
 
             for (int i = 0; i < _count; i++) {
                 double sample = m_AudioSourceSample; // ui->spinBox01->value()
-                double fs = 1.0 * i * sample / m_windowSize;
+                double fs = 1.0 * i * sample / (m_windowSize / 2.0);
                 fs /= 2;
 
                 if (i == 0) xmin = fs;
@@ -631,7 +631,7 @@ void widegtFFT::fftwData(QVector<double>        dsdata,
 
         for (int i = 0; i < _count; i++) {
             double sample = m_AudioSourceSample;
-            double fs = 1.0 * i * sample / m_windowSize;
+            double fs = 1.0 * i * sample / (m_windowSize / 2.0);
             fs /= 2;
 
             if (i == 0) xmin = fs;

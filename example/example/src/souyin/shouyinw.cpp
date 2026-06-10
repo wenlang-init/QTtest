@@ -1,7 +1,7 @@
 #include "shouyinw.h"
 #include "ui_shouyinw.h"
 #include "beastSound.h"
-#include "../cpu/funchelper.h"
+#include "../public/funchelper.h"
 #include "autf8.h"
 #include "usecode.h"
 #include <QFileDialog>

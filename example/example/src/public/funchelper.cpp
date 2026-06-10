@@ -4,6 +4,7 @@
 #include <QDateTime>
 #include <QProcess>
 #include <QTime>
+#include <QEventLoop>
 
 FuncHelper& FuncHelper::getInstance()
 {
@@ -12,9 +13,19 @@ FuncHelper& FuncHelper::getInstance()
     return funcHelper;
 }
 
+void FuncHelper::getFileHashSig(QString filePath, int hash)
+{
+    emit sigGetFileHashPrivate(filePath, hash);
+}
+
 FuncHelper::FuncHelper(QObject *parent)
     : QObject{parent}
-{}
+{
+    connect(this,
+            &FuncHelper::sigGetFileHashPrivate,
+            this,
+            &FuncHelper::slotGetFileHash);
+}
 
 void FuncHelper::slotGetFileHash(QString filePath, int bhash) {
     QString result;
@@ -160,12 +171,46 @@ QByteArray FuncHelper::executeCmd(const QString& cmd, const QStringList& args)
     p.start();
 
     if (!p.waitForFinished()) {
-        // p.readAllStandardError();
+        strResult = p.readAllStandardError();
         return strResult;
     }
 
     strResult = p.readAllStandardOutput();
     return strResult;
+
+#if 0
+    {
+        QEventLoop loop;
+
+        QByteArray strResult;
+        QProcess   p;
+
+        // connect(&p,SIGNAL(readyReadStandardOutput()),this,SLOT(readstanderoutput()));
+        // connect(&p,SIGNAL(readyReadStandardError()),this,SLOT(readstandererror()));
+        // connect(&p,SIGNAL(stateChanged(QProcess::ProcessState)),this,SLOT(stateChanged(QProcess::ProcessState)));
+        connect(&p, &QProcess::errorOccurred, this,
+                [&](QProcess::ProcessError error) {
+            qDebug() << "Process error:" << error;
+            strResult = p.readAllStandardError();
+            loop.quit();
+        });
+        connect(&p, &QProcess::finished, this,
+                [&](int exitCode,
+                    QProcess::ExitStatus exitStatus) {
+            qDebug() << "Process finished with exit code:" << exitCode
+                     << "and exit status:" << exitStatus;
+            strResult = p.readAllStandardOutput();
+            loop.quit();
+        });
+
+        p.setProgram(cmd);
+        p.setArguments(args);
+        p.start();
+
+        loop.exec();
+        return strResult;
+    }
+#endif // if 0
 }
 
 QByteArray FuncHelper::executeBashCmd(const QString& strCmd)

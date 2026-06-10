@@ -10,6 +10,8 @@ class FuncHelper : public QObject {
 public:
 
     static FuncHelper& getInstance();
+    void               getFileHashSig(QString filePath,
+                                      int     hash);
 
 protected:
 
@@ -63,6 +65,9 @@ signals:
 
     void sig_hashinfo(int value);
     void sig_hashfinished(const QString& md5);
+
+    void sigGetFileHashPrivate(QString filePath,
+                               int     hash);
 };
 
 #endif // FUNCHELPER_H

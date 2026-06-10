@@ -75,7 +75,6 @@ public:
     static bool fft(const QVector<double>& sdata,
                     QVector<double>      & fftdata,
                     QVector<double>      & radiandata,
-                    int                    channalCount = 2,
                     int                    windowSize = 2048,
                     int                    overlap = 1024);
 

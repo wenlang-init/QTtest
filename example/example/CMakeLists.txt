@@ -24,6 +24,7 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     #Qml
     QuickControls2
     #CorePrivate
+    SerialPort
 )
 
 # 设置项目范围默认为标准安排。该命令在Qt6包的Core组件中定义，可以像这样加载：
@@ -84,13 +85,7 @@ set(fftsources
     src/fftw/gensignalwidget.ui
 )
 
-set(MODULE_SOURCES
-    src/sql_engine.cpp
-    src/sql_engine.h
-
-    src/cpu/funchelper.cpp
-    src/cpu/funchelper.h
-
+set(souyinsources
     src/souyin/shouyinw.cpp
     src/souyin/shouyinw.h
     src/souyin/shouyinw.ui
@@ -98,14 +93,46 @@ set(MODULE_SOURCES
     src/souyin/quickw.h
     src/souyin/usecode.h
     src/souyin/usecode.cpp
+)
 
+set(desktopsources
+    src/desktop/bottom_icon.cpp
+    src/desktop/bottom_icon.h
+    src/desktop/desktopwidget.cpp
+    src/desktop/desktopwidget.h
+    src/desktop/custombtn.h
+    src/desktop/custombtn.cpp
+    src/desktop/basewidget.cpp
+    src/desktop/basewidget.h
+)
 
+set(sqosources
+    src/sql/sql_engine.cpp
+    src/sql/sql_engine.h
+)
+
+set(publicsources
+    src/public/funchelper.cpp
+    src/public/funchelper.h
+
+    src/public/waitdialog.h
+    src/public/waitdialog.cpp
+
+    src/public/lserialport.cpp
+    src/public/lserialport.h
+)
+
+set(MODULE_SOURCES
     ${mwsources}
     ${videosources}
     ${graphicssources}
     ${qmlListsources}
     ${audiosources}
     ${layoutsources}
+    ${souyinsources}
+    ${desktopsources}
+    ${sqosources}
+    ${publicsources}
 )
 if(WIN32 OR LINUX)
     set(MODULE_SOURCES
@@ -121,14 +148,7 @@ set(PROJECT_SOURCES
     mainwindow.ui
     homewidget.h
     homewidget.cpp
-    src/desktop/bottom_icon.cpp
-    src/desktop/bottom_icon.h
-    src/desktop/desktopwidget.cpp
-    src/desktop/desktopwidget.h
-    src/desktop/custombtn.h
-    src/desktop/custombtn.cpp
-    src/desktop/basewidget.cpp
-    src/desktop/basewidget.h
+
     ${TS_FILES}
     ${MODULE_SOURCES}
 )
@@ -263,6 +283,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     #Qt${QT_VERSION_MAJOR}::Qml
     Qt${QT_VERSION_MAJOR}::QuickControls2
     #Qt${QT_VERSION_MAJOR}::CorePrivate
+    Qt${QT_VERSION_MAJOR}::SerialPort
 )
 
 target_link_libraries(${PROJECT_NAME}

@@ -199,7 +199,6 @@ void fftw3Object::generateSignalData(QByteArray & data,
 bool fftw3Object::fft(const QVector<double>& sdata,
                       QVector<double>      & fftdata,
                       QVector<double>      & radiandata,
-                      int                    channalCount,
                       int                    windowSize,
                       int                    overlap)
 {
@@ -428,7 +427,7 @@ bool fftw3Object::fft(const QByteArray& sdata,
         break;
     }
 
-    return fft(tmpData, fftdata, radiandata, channalCount, windowSize, overlap);
+    return fft(tmpData, fftdata, radiandata, windowSize, overlap);
 }
 
 bool fftw3Object::fftStreamStart(int windowSize, int overlap)
