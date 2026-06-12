@@ -9,8 +9,9 @@
 #include <QOpenGLWidget>
 #include <QGraphicsView>
 #include <QGraphicsProxyWidget>
-
-#include "src/fftw/widegtfft.h"
+#if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
+# include "src/fftw/widegtfft.h"
+#endif // if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
 #include "src/messageWidget/listmessageview.h"
 #include "src/video/videowidget.h"
 #include "src/graphics/graphicswidget.h"
@@ -239,6 +240,7 @@ int main(int argc, char *argv[])
         QString str = argv[1];
 
         if (str == "1") {
+        #if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
             widegtFFT *w = new widegtFFT;
             w->resize(600, 600);
             w->show();
@@ -246,6 +248,7 @@ int main(int argc, char *argv[])
             QObject::connect(w, &widegtFFT::destroyed, [&]() {
                 qDebug() << "widegtFFT -------" << w;
             });
+        #endif // if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
         } else if (str == "2") {
             videoWidget *w = new videoWidget;
             w->resize(600, 600);

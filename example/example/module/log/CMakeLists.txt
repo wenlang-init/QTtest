@@ -61,6 +61,10 @@ else()
     target_link_libraries(${PROJECT_NAME} Threads::Threads)
 endif()
 
+# QMessageLogContext 获取日志上下文信息，包含文件名、行号、函数名等信息。
+# 定义 QT_MESSAGELOGCONTEXT 可以启用这些功能。
+# add_compile_definitions(DEFINES QT_MESSAGELOGCONTEXT)
+
 # INTERFACE：表示该库是一个接口库，不会生成实际的库文件，但可以被其他目标链接，并且会传播其包含目录和编译选项。
 target_include_directories(${PROJECT_NAME}
     INTERFACE

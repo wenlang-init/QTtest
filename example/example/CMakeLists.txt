@@ -346,17 +346,27 @@ if(WIN32)
     #         "${CMAKE_BINARY_DIR}"
     # )
 elseif(UNIX)
-    if(LINUX)
-        target_link_directories(${PROJECT_NAME} PRIVATE ${FFTWPATH}/linux-x64-3.3.11/lib)
-        target_link_libraries(${PROJECT_NAME} PRIVATE
-            libfftw3.a
-            # libfftw3_mpi.a
-            # libfftw3_omp.a
-            # libfftw3_threads.a
-        )
-        target_include_directories(${PROJECT_NAME} PRIVATE
-            ${FFTWPATH}/linux-x64-3.3.11/include
-        )
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64)")
+        # target_link_directories(${PROJECT_NAME} PRIVATE ${FFTWPATH}/linux-aarch64-3.3.11/lib)
+        # target_link_libraries(${PROJECT_NAME} PRIVATE
+        #     fftw3
+        # )
+        # target_include_directories(${PROJECT_NAME} PRIVATE
+        #     ${FFTWPATH}/linux-aarch64-3.3.11/include
+        # )
+    else()
+        if(LINUX)
+            target_link_directories(${PROJECT_NAME} PRIVATE ${FFTWPATH}/linux-x64-3.3.11/lib)
+            target_link_libraries(${PROJECT_NAME} PRIVATE
+                libfftw3.a
+                # libfftw3_mpi.a
+                # libfftw3_omp.a
+                # libfftw3_threads.a
+            )
+            target_include_directories(${PROJECT_NAME} PRIVATE
+                ${FFTWPATH}/linux-x64-3.3.11/include
+            )
+        endif()
     endif()
 endif()
 

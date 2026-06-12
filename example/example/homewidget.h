@@ -14,6 +14,8 @@ public:
 protected:
 
     void init();
+    void showWidget(int index);
+    void keyPressEvent(QKeyEvent *event) override;
 
     struct  widgetItem {
         QWidget *widget;

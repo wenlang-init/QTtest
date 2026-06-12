@@ -305,9 +305,8 @@ bool fftw3Object::fft(const QByteArray& sdata,
 
         for (int i = 0; i < count; i += channalCount) {
             double v = p[i];
-            v = v / maxVal_; // 归一化
-            tmpData.append(v);
-            dsdata.append(p[i]);
+            tmpData.append(v / maxVal_);
+            dsdata.append(v);
         }
         break;
     }
@@ -319,9 +318,8 @@ bool fftw3Object::fft(const QByteArray& sdata,
 
         for (int i = 0; i < count; i += channalCount) {
             double v = p[i];
-            v = v / maxVal_; // 归一化
-            tmpData.append(v);
-            dsdata.append(p[i]);
+            tmpData.append(v / maxVal_);
+            dsdata.append(v);
         }
         break;
     }
@@ -339,9 +337,8 @@ bool fftw3Object::fft(const QByteArray& sdata,
             } else {
                 v = qFromBigEndian(p[i]);
             }
-            v = v / maxVal_; // 归一化
-            tmpData.append(v);
-            dsdata.append(p[i]);
+            tmpData.append(v / maxVal_);
+            dsdata.append(v);
         }
         break;
     }
@@ -359,9 +356,8 @@ bool fftw3Object::fft(const QByteArray& sdata,
             } else {
                 v = qFromBigEndian(p[i]);
             }
-            v = v / maxVal_; // 归一化
-            tmpData.append(v);
-            dsdata.append(p[i]);
+            tmpData.append(v / maxVal_);
+            dsdata.append(v);
         }
         break;
     }
@@ -379,9 +375,8 @@ bool fftw3Object::fft(const QByteArray& sdata,
             } else {
                 v = qFromBigEndian(p[i]);
             }
-            v = v / maxVal_; // 归一化
-            tmpData.append(v);
-            dsdata.append(p[i]);
+            tmpData.append(v / maxVal_);
+            dsdata.append(v);
         }
         break;
     }
@@ -399,7 +394,7 @@ bool fftw3Object::fft(const QByteArray& sdata,
                 v = qFromBigEndian(p[i]);
             }
             tmpData.append(v);
-            dsdata.append(p[i]);
+            dsdata.append(v);
         }
         break;
     }
@@ -417,16 +412,14 @@ bool fftw3Object::fft(const QByteArray& sdata,
             } else {
                 v = qFromBigEndian(p[i]);
             }
-            v = v / maxVal_; // 归一化
-            tmpData.append(v);
-            dsdata.append(p[i]);
+            tmpData.append(v / maxVal_);
+            dsdata.append(v);
         }
     }
 
     default:
         break;
     }
-
     return fft(tmpData, fftdata, radiandata, windowSize, overlap);
 }
 

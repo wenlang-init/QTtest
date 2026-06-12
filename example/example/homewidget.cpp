@@ -2,11 +2,11 @@
 #include <QDebug>
 #include "src/desktop/desktopwidget.h"
 #include <QHBoxLayout>
+#include <QKeyEvent>
 
 // #include "input_method_widget.h"
 
 #include "mainwindow.h"
-#include "src/fftw/widegtfft.h"
 #include "src/messageWidget/listmessageview.h"
 #include "src/video/videowidget.h"
 #include "src/graphics/graphicswidget.h"
@@ -14,6 +14,9 @@
 #include "src/audio/widget.h"
 #include "src/layout/wlayout.h"
 #include "src/souyin/shouyinw.h"
+#if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
+# include "src/fftw/widegtfft.h"
+#endif // if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
 
 homewidget::homewidget(QWidget *parent)
 {
@@ -48,145 +51,152 @@ homewidget::homewidget(QWidget *parent)
     // desktopwidget->set_switch_row(true);
     // desktopwidget->set_switch_one(true);
     connect(desktopwidget, &DeskTopWidget::itemclicked, this, [ = ](int index) {
-        // qDebug() << "item clicked:" << index;
-
-        if (index < m_widgetList.count()) {
-            if (m_widgetList[index].widget->isHidden()) {
-                m_widgetList[index].widget->show();
-            }
-        }
+        showWidget(index);
     });
 
     init();
+
+    // installEventFilter(this);
 }
 
 homewidget::~homewidget()
 {
     foreach(auto node, m_widgetList) {
-        delete node.widget;
+        if (node.widget) node.widget->deleteLater();
     }
 }
 
 void homewidget::init()
 {
     widgetItem witem;
+    int index = 0;
 
-    witem.imageurl = ":/MacOS/actions/object-select-symbolic.symbolic.png";
-    {
-        widegtFFT *w = new widegtFFT;
-        w->resize(600, 600);
-        w->hide();
-
-        // w->setAttribute(Qt::WA_DeleteOnClose, true);
-        // QObject::connect(w, &widegtFFT::destroyed,
-        //                  this, &homewidget::widgetDestroyed);
-        witem.widget = w;
-        witem.name = "FFT";
-        m_widgetList.append(witem);
-    }
-    {
-        videoWidget *w = new videoWidget;
-        w->resize(600, 600);
-        w->hide();
-
-        // w->setAttribute(Qt::WA_DeleteOnClose, true);
-        // QObject::connect(w, &videoWidget::destroyed,
-        //                  this, &homewidget::widgetDestroyed);
-        witem.widget = w;
-        witem.name = "video";
-        m_widgetList.append(witem);
-    }
-    {
-        ListMessageView *w = new ListMessageView;
-        w->resize(600, 600);
-        w->hide();
-
-        // w->setAttribute(Qt::WA_DeleteOnClose, true);
-        // QObject::connect(w, &ListMessageView::destroyed,
-        //                  this, &homewidget::widgetDestroyed);
-        witem.widget = w;
-        witem.name = "ListMessage";
-        m_widgetList.append(witem);
-    }
-    {
-        GraphicsWidget *w = new GraphicsWidget;
-        w->resize(600, 600);
-        w->hide();
-
-        // w->setAttribute(Qt::WA_DeleteOnClose, true);
-        // QObject::connect(w, &GraphicsWidget::destroyed,
-        //                  this, &homewidget::widgetDestroyed);
-        witem.widget = w;
-        witem.name = "Graphics";
-        m_widgetList.append(witem);
-    }
-    {
-        ListW *w = new ListW;
-        w->resize(600, 600);
-        w->hide();
-
-        // w->setAttribute(Qt::WA_DeleteOnClose, true);
-        // QObject::connect(w, &ListW::destroyed,
-        //                  this, &homewidget::widgetDestroyed);
-        witem.widget = w;
-        witem.name = "List";
-        m_widgetList.append(witem);
-    }
-    {
-        Widget *w = new Widget;
-        w->resize(600, 600);
-        w->hide();
-
-        // w->setAttribute(Qt::WA_DeleteOnClose, true);
-        // QObject::connect(w, &Widget::destroyed,
-        //                  this, &homewidget::widgetDestroyed);
-        witem.widget = w;
-        witem.name = "audio";
-        m_widgetList.append(witem);
-    }
-    {
-        wLayout *w = new wLayout;
-        w->resize(600, 600);
-        w->hide();
-
-        // w->setAttribute(Qt::WA_DeleteOnClose, true);
-        // QObject::connect(w, &wLayout::destroyed,
-        //                  this, &homewidget::widgetDestroyed);
-        witem.widget = w;
-        witem.name = "layout";
-        m_widgetList.append(witem);
-    }
-    {
-        ShouYinW *w = new ShouYinW;
-        w->resize(600, 600);
-        w->hide();
-
-        // w->setAttribute(Qt::WA_DeleteOnClose, true);
-        // QObject::connect(w, &ShouYinW::destroyed,
-        //                  this, &homewidget::widgetDestroyed);
-        witem.widget = w;
-        witem.name = "兽音";
-        m_widgetList.append(witem);
-    }
-    {
-        MainWindow *w = new MainWindow;
-        w->resize(600, 600);
-        w->hide();
-
-        // w->setAttribute(Qt::WA_DeleteOnClose, true);
-        // QObject::connect(w, &MainWindow::destroyed,
-        //                  this, &homewidget::widgetDestroyed);
-        witem.widget = w;
-        witem.name = "异环抽卡";
-        m_widgetList.append(witem);
-    }
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#4caf50.svg";
+    witem.name = "FFT";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#8bc34a.svg";
+    witem.name = "video";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#9e9e9e.svg";
+    witem.name = "ListMessage";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#388e3c.svg";
+    witem.name = "Graphics";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#689f38.svg";
+    witem.name = "List";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#1976d2.svg";
+    witem.name = "audio";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#2196f3.svg";
+    witem.name = "layout";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#d32f2f.svg";
+    witem.name = "兽音";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#f5f5f5.svg";
+    witem.name = "异环抽卡";
+    m_widgetList.append(witem);
 
     foreach(auto node, m_widgetList) {
         desktopwidget->additem(node.imageurl, node.name);
     }
+    desktopwidget->set_btn_current(0);
     qDebug() << m_widgetList.count();
 }
 
+void homewidget::showWidget(int index)
+{
+    if (m_widgetList.size() <= index) return;
+
+    if (m_widgetList[index].widget) {
+        if (m_widgetList[index].widget->isHidden()) {
+            qDebug() << "show widget:" << m_widgetList[index].name;
+            m_widgetList[index].widget->show();
+        }
+        return;
+    }
+    QWidget *w = nullptr;
+
+    switch (index) {
+    case 0:
+#if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
+        w = new widegtFFT;
+#endif // if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
+        break;
+
+    case 1:
+        w = new videoWidget;
+        break;
+
+    case 2:
+        w = new ListMessageView;
+        break;
+
+    case 3:
+        w = new GraphicsWidget;
+        break;
+
+    case 4:
+        w = new ListW;
+        break;
+
+    case 5:
+        w = new Widget;
+        break;
+
+    case 6:
+        w = new wLayout;
+        break;
+
+    case 7:
+        w = new ShouYinW;
+        break;
+
+    case 8:
+        w = new MainWindow;
+        break;
+
+    default:
+        break;
+    }
+
+    if (w) {
+        m_widgetList[index].widget = w;
+
+        QObject::connect(w, &QWidget::destroyed,
+                         this, &homewidget::widgetDestroyed);
+        w->setAttribute(Qt::WA_DeleteOnClose, true);
+        w->resize(600, 600);
+        w->show();
+    }
+}
+
+void homewidget::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key() == Qt::Key_Up) {
+        desktopwidget->set_switch_row(false);
+    } else if (event->key() == Qt::Key_Down) {
+        desktopwidget->set_switch_row(true);
+    } else if (event->key() == Qt::Key_Left) {
+        desktopwidget->set_switch_one(false);
+    } else if (event->key() == Qt::Key_Right) {
+        desktopwidget->set_switch_one(true);
+    } else if ((event->key() == Qt::Key_Return) ||
+               (event->key() == Qt::Key_Enter)) {
+        int index = desktopwidget->get_current_index();
+        showWidget(index);
+    }
+    QWidget::keyPressEvent(event);
+}
+
 void homewidget::widgetDestroyed() {
-    qDebug() << "widegtFFT -------" << sender(); // ->metaObject()->metaType();
+    for (int i = 0; i < m_widgetList.size(); i++) {
+        if (m_widgetList[i].widget == sender()) {
+            qDebug() << "widget destroyed:" << m_widgetList[i].name;
+            m_widgetList[i].widget = nullptr;
+            break;
+        }
+    }
 }
