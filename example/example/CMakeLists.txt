@@ -62,6 +62,8 @@ set(layoutsources
 )
 
 set(fftsources
+    src/fftw/simplefft.h
+    src/fftw/simplefft.cpp
     src/fftw/fftw3object.h
     src/fftw/fftw3object.cpp
     src/fftw/udpobject.h

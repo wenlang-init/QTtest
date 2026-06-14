@@ -3,6 +3,7 @@
 #include "src/desktop/desktopwidget.h"
 #include <QHBoxLayout>
 #include <QKeyEvent>
+#include "src/public/funchelper.h"
 
 // #include "input_method_widget.h"
 
@@ -51,10 +52,11 @@ homewidget::homewidget(QWidget *parent)
     // desktopwidget->set_switch_row(true);
     // desktopwidget->set_switch_one(true);
     connect(desktopwidget, &DeskTopWidget::itemclicked, this, [ = ](int index) {
-        showWidget(index);
+        showW(index);
     });
 
     init();
+    initDesktopFile();
 
     // installEventFilter(this);
 }
@@ -104,6 +106,41 @@ void homewidget::init()
     }
     desktopwidget->set_btn_current(0);
     qDebug() << m_widgetList.count();
+}
+
+void homewidget::initDesktopFile()
+{
+    QString filename;
+    QPixmap pixmap;
+    QString desktopPath =
+        QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
+    QStringList fileList;
+    QDir dir(desktopPath);
+
+    foreach(auto file, dir.entryList(QDir::NoDotAndDotDot | QDir::AllEntries)) {
+        if (file.endsWith(".lnk")) {
+            fileList.append(desktopPath + "/" + file);
+        }
+    }
+
+    for (int i = 0; i < fileList.size(); i++) {
+        if (false == FuncHelper::getInstance().getLinkInfo(fileList[i],
+                                                           filename,
+                                                           pixmap)) continue;
+        desktopItem node;
+        node.fname = filename;
+        node.name = filename.split("/").last();
+        QStringList slist = node.name.split(".exe", Qt::SkipEmptyParts);
+        node.name = slist[slist.size() - 1];
+        node.pixmap = pixmap;
+        m_desktopList.append(node);
+    }
+
+    foreach(auto node, m_desktopList) {
+        desktopwidget->additem(node.pixmap, node.name);
+    }
+    desktopwidget->set_btn_current(0);
+    qDebug() << m_desktopList.count();
 }
 
 void homewidget::showWidget(int index)
@@ -173,6 +210,29 @@ void homewidget::showWidget(int index)
     }
 }
 
+void homewidget::showW(int index)
+{
+    if (index < m_widgetList.size()) {
+        showWidget(index);
+    } else {
+        int i = index - m_widgetList.size();
+
+        if (i < m_desktopList.size()) {
+            QStringList sl = m_desktopList[i].fname.split("/");
+            QString     workDir = m_desktopList[i].fname;
+
+            if (sl.size() > 1) {
+                workDir.remove("/" + sl[sl.size() - 1]);
+            } else {
+                workDir = QCoreApplication::applicationFilePath();
+            }
+            qDebug() << workDir;
+            FuncHelper::getInstance().execCmd(m_desktopList[i].fname, workDir,
+                                              {});
+        }
+    }
+}
+
 void homewidget::keyPressEvent(QKeyEvent *event)
 {
     if (event->key() == Qt::Key_Up) {
@@ -186,7 +246,7 @@ void homewidget::keyPressEvent(QKeyEvent *event)
     } else if ((event->key() == Qt::Key_Return) ||
                (event->key() == Qt::Key_Enter)) {
         int index = desktopwidget->get_current_index();
-        showWidget(index);
+        showW(index);
     }
     QWidget::keyPressEvent(event);
 }

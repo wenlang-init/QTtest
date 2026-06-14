@@ -5,6 +5,8 @@
 #include <QProcess>
 #include <QTime>
 #include <QEventLoop>
+#include <QFileInfo>
+#include <QFileIconProvider>
 
 FuncHelper& FuncHelper::getInstance()
 {
@@ -211,6 +213,44 @@ QByteArray FuncHelper::executeCmd(const QString& cmd, const QStringList& args)
         return strResult;
     }
 #endif // if 0
+}
+
+void FuncHelper::execCmd(const QString    & cmd,
+                         const QString    & workDir,
+                         const QStringList& args)
+{
+    QProcess *p = new QProcess;
+
+    connect(p, &QProcess::finished, this, [ = ]() {
+        QProcess *p = (QProcess *)sender();
+        delete p;
+    });
+    connect(p, &QProcess::errorOccurred, this,
+            [ = ](QProcess::ProcessError error) {
+        QProcess *p = (QProcess *)sender();
+        delete p;
+    });
+    connect(p, &QProcess::readyReadStandardOutput, this, [ = ]() {
+        QProcess *p = (QProcess *)sender();
+        qDebug().noquote() <<
+            QString::fromLocal8Bit(p->readAllStandardOutput());
+    });
+    connect(p, &QProcess::readyReadStandardError, this, [ = ]() {
+        QProcess *p = (QProcess *)sender();
+        qCritical().noquote() <<
+            QString::fromLocal8Bit(p->readAllStandardError());
+    });
+
+    // connect(&p,SIGNAL(readyReadStandardOutput()),this,SLOT(readstanderoutput()));
+    // connect(&p,SIGNAL(readyReadStandardError()),this,SLOT(readstandererror()));
+    // connect(&p,SIGNAL(errorOccurred(QProcess::ProcessError)),this,SLOT(errorOccurred(QProcess::ProcessError)));
+    // connect(&p,SIGNAL(finished(int,QProcess::ExitStatus)),this,SLOT(finished(int,QProcess::ExitStatus)));
+    // connect(&p,SIGNAL(stateChanged(QProcess::ProcessState)),this,SLOT(stateChanged(QProcess::ProcessState)));
+
+    p->setProgram(cmd);
+    p->setWorkingDirectory(workDir);
+    p->setArguments(args);
+    p->start();
 }
 
 QByteArray FuncHelper::executeBashCmd(const QString& strCmd)
@@ -467,4 +507,19 @@ int FuncHelper::getCurrentThreadCPU()
 
 #endif // if defined Q_OS_WINDOWS
     return -1;
+}
+
+bool FuncHelper::getLinkInfo(const QString& sfilename,
+                             QString      & filename,
+                             QPixmap      & pixmap)
+{
+    QFileInfo finfo(sfilename);
+
+    if ((finfo.exists() == false) ||
+        (!finfo.isSymLink() && !finfo.isShortcut())) return false;
+
+    QFileIconProvider ficon;
+    pixmap = ficon.icon(finfo).pixmap(32, 32);
+    filename = finfo.symLinkTarget();
+    return true;
 }

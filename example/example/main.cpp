@@ -185,10 +185,10 @@ int main(int argc, char *argv[])
     CxxLog::getInstance().initLog(logdir.toLocal8Bit().toStdString(),
                                   1000,
                                   1024 * 1024 * 10);
-    CxxLog::getInstance().setFileLogLevel(CxxLog::LOG_TYPE_DEBUG);
+    CxxLog::getInstance().setLogLevel(CxxLog::LOG_TYPE_DEBUG);
     CxxLog::getInstance().setFileLogLevel(CxxLog::LOG_TYPE_DEBUG);
     CxxLog::getInstance().setPrint(true);
-    CxxLog::getInstance().setColorLog(true);
+    CxxLog::getInstance().setColorLog(false);
 
     // DEBUG_LOG_CXX_STRING(std::string("xxxxxxxxxxxx1xxxxxxxxxxx\n"));
     // WARRING_LOG_CXX_STRING(std::string("xxxxxxxxxx2xxxxxxxxxxxxx\n"));
@@ -227,12 +227,12 @@ int main(int argc, char *argv[])
         }
     }
 
-    qDebug().noquote() << qApp->applicationFilePath()
-                       << "\nPID:" << qApp->applicationPid()
-                       << "\nversion:" << qApp->applicationVersion()
-                       << "\narg:" << qApp->arguments()
-                       << "\norganization:" << qApp->organizationDomain()
-                       << ";" << qApp->organizationName();
+    qInfo().noquote() << qApp->applicationFilePath()
+                      << "\nPID:" << qApp->applicationPid()
+                      << "\nversion:" << qApp->applicationVersion()
+                      << "\narg:" << qApp->arguments()
+                      << "\norganization:" << qApp->organizationDomain()
+                      << ";" << qApp->organizationName();
 
     // SETAUTOSHOW_INPUT_METHOD_WIDGET();
 

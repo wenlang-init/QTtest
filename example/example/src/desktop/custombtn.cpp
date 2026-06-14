@@ -60,6 +60,12 @@ void CustomBtn::setimage(QString img_url)
     this->repaint();
 }
 
+void CustomBtn::setpixmap(const QPixmap& pixmap)
+{
+    label_image->setPixmap(pixmap);
+    this->repaint();
+}
+
 void CustomBtn::settext(QString text)
 {
     show_text = text;

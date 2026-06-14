@@ -1,5 +1,6 @@
 #include "fftw3object.h"
 #include <QtEndian>
+#include <QDebug>
 
 fftw3Object::fftw3Object(QObject *parent)
     : QObject{parent}

@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QCryptographicHash>
+#include <QPixmap>
 
 class FuncHelper : public QObject {
     Q_OBJECT
@@ -44,6 +45,9 @@ public:
                                int      iNeedStrLong = 64);
     QByteArray executeCmd(const QString    & cmd,
                           const QStringList& args);
+    void       execCmd(const QString    & cmd,
+                       const QString    & workDir,
+                       const QStringList& args);
     QByteArray executeBashCmd(const QString& strCmd);
 
     bool       killExec(const QString& sExename);
@@ -60,6 +64,10 @@ public:
     int        getThreadCPU(const void *tid);
     int        setCurrentThreadCPU(int cpu);
     int        getCurrentThreadCPU();
+
+    bool       getLinkInfo(const QString& sfilename,
+                           QString      & filename,
+                           QPixmap      & pixmap);
 
 signals:
 

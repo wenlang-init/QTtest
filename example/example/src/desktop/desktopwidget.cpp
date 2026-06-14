@@ -90,6 +90,27 @@ void DeskTopWidget::additem(QString imageurl, QString name)
     set_btn_current(0);
 }
 
+void DeskTopWidget::additem(const QPixmap& pixmap, QString name)
+{
+    CustomBtn *btn = new CustomBtn(homewidget, "", name);
+
+    btn->setpixmap(pixmap);
+
+    connect(btn, SIGNAL(clicked(CustomBtn*)), this, SLOT(clicked(CustomBtn*)));
+    itemlist.append(btn);
+
+    resize_homewidget();
+
+    set_btn_current(0);
+}
+
+void DeskTopWidget::setpixmap(const QPixmap& pixmap, int index)
+{
+    if ((index < 0) || (itemlist.size() <= index)) return;
+
+    itemlist[index]->setpixmap(pixmap);
+}
+
 void DeskTopWidget::insertat(int index, QString imageurl, QString name)
 {
     if (index < 0) {

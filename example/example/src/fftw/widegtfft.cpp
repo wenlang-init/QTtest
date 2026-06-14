@@ -407,6 +407,41 @@ void widegtFFT::readData(QByteArray data)
             m_customPlotCurveSData->m_customPlot->replot();
         }
     }
+
+    {
+        // 数据速度
+        static QDateTime datetime = QDateTime::currentDateTime();
+        static qint64    _size = 0;
+        _size += data.size();
+        qint64 timeout = datetime.msecsTo(QDateTime::currentDateTime());
+
+        if (timeout > 999) {
+            QString str;
+            static const int stek = 1024;
+            static const int stem = stek * stek;
+            static const int steg = stek * stek * stek;
+
+            if (_size < stek) {
+                double val = _size;
+                str = QString::number(val, 'f', 2) + "B/s";
+            } else if (_size < stem) {
+                double val = 1.0 * _size / stek;
+                str = QString::number(val, 'f', 2) + "KB/s";
+            } else if (_size < steg) {
+                double val = 1.0 * _size / stem;
+                str = QString::number(val, 'f', 2) + "MB/s";
+            } else {
+                double val = 1.0 * _size / steg;
+                str = QString::number(val, 'f', 2) + "GB/s";
+            }
+
+            ui->labelspeed->setText(str);
+
+            datetime = QDateTime::currentDateTime();
+            _size = 0;
+        }
+    }
+
     m_udpObject.writeData(data, QHostAddress("127.0.0.1"), 12345);
 
     {

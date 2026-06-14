@@ -14,7 +14,8 @@ public:
 
     int  writeData(const QByteArray  & data,
                    const QHostAddress& host,
-                   const quint16     & port);
+                   const quint16     & port,
+                   const qsizetype   & sendPackSize = 512);
 
 signals:
 

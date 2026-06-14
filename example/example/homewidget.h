@@ -14,7 +14,9 @@ public:
 protected:
 
     void init();
+    void initDesktopFile();
     void showWidget(int index);
+    void showW(int index);
     void keyPressEvent(QKeyEvent *event) override;
 
     struct  widgetItem {
@@ -26,6 +28,12 @@ protected:
         }
     };
 
+    struct  desktopItem {
+        QString name;
+        QString fname;
+        QPixmap pixmap;
+    };
+
 protected slots:
 
     void widgetDestroyed();
@@ -33,6 +41,7 @@ protected slots:
 private:
 
     QList<widgetItem>m_widgetList;
+    QList<desktopItem>m_desktopList;
     DeskTopWidget *desktopwidget;
 };
 #endif // ifndef HOMEWIDGET_H
