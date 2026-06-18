@@ -41,6 +41,7 @@
 #include <direct.h>
 #define sleep(sec)   Sleep(sec * 1000)
 #define msleep(msec) Sleep(msec)
+static int isFirst = 1;
 #else
 #define msleep(msec) usleep(msec * 1000)
 #endif
@@ -603,6 +604,12 @@ int setLogLevel(LOG_TYPE_ENUM level)
 
 void writeLog(LOG_TYPE_ENUM level, const char *function, const char *file, const int line, const char *buffer)
 {
+#if defined(WIN32) || defined(WIN64)
+    if (isFirst) {
+        isFirst = 0;
+        system("color 0");
+    }
+#endif // if defined(WIN32) || defined(WIN64)
     const char *typemsg;
     const char *colorHead = YELLOW;
     switch (level) {
@@ -635,7 +642,6 @@ void writeLog(LOG_TYPE_ENUM level, const char *function, const char *file, const
     unsigned long ThreadId = 0;
 
 #if defined(WIN32) || defined(WIN64)
-    // system("color 0");
     ProcessId = GetCurrentProcessId();
     ThreadId = GetCurrentThreadId();
 #endif
@@ -752,6 +758,12 @@ void writeLogformat(LOG_TYPE_ENUM level,const char* function,const char *file,co
 
 void writeLogdata(LOG_TYPE_ENUM level,const char* function,const char *file,const int line,const char* buffer)
 {
+#if defined(WIN32) || defined(WIN64)
+    if (isFirst) {
+        isFirst = 0;
+        system("color 0");
+    }
+#endif // if defined(WIN32) || defined(WIN64)
     const char *colorHead = YELLOW;
     if(m_printStdout>0){
         const char *typemsg;
@@ -784,7 +796,6 @@ void writeLogdata(LOG_TYPE_ENUM level,const char* function,const char *file,cons
         unsigned long ProcessId = 0;
         unsigned long ThreadId = 0;
 #if defined(WIN32) || defined(WIN64)
-        // system("color 0");
         ProcessId = GetCurrentProcessId();
         ThreadId = GetCurrentThreadId();
 #endif

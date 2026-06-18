@@ -1,21 +1,22 @@
 #include "py_t9_core.h"
-//#include "mprint.h"
-#include <time.h>
-#include <sys/time.h>
-#include <stdint.h>
-#include <unistd.h>
-
-#include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <string.h>
 #include <errno.h>
+#include <stdio.h>
+#include <time.h>
+#include <stdarg.h>
+#include <stdlib.h>
+
+#if defined(WIN32) || defined(WIN64)
+#include <windows.h>
+#endif
 
 // 简拼
 #define CHINESE_WORD_LIB_PATH "./chinese_words.txt"
 // 繁体
 #define CHINESE_FT_WORD_LIB_PATH "./chinese_words2.txt"
 
-#if 1
 // ubuntu
 // \033 == \e == 0x1B
 #define RESET       "\033[0m"
@@ -35,50 +36,15 @@
 #define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
 #define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
 #define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
-#endif
 
-#define YEAR_COMPENSATE (-85)
-
-//struct timeval{
-//	long int tv_sec; // 秒数
-//	long int tv_usec; // 微秒数
-//}
-static char *__get_printfTime()
-{
-    static char cur_time[20];
-#ifdef __linux__
-    struct timeval tv;
-    gettimeofday(&tv, NULL); // 获取1970-1-1到现在的时间结果保存到tv中
-    uint64_t sec = tv.tv_sec;
-    struct tm cur_tm; // 保存转换后的时间结果
-    //tzset();
-    localtime_r((time_t *)&sec, &cur_tm);
-    snprintf(cur_time, 20, "%d-%02d-%02d %02d:%02d:%02d", cur_tm.tm_year + 1900, cur_tm.tm_mon + 1, cur_tm.tm_mday, cur_tm.tm_hour, cur_tm.tm_min, cur_tm.tm_sec);
-#else
-    time_t curtime = time(0);
-    struct tm *tim = localtime(&curtime);
-    snprintf(cur_time, 20, "%d-%02d-%02d %02d:%02d:%02d", tim->tm_yday + 1900 + YEAR_COMPENSATE, tim->tm_mon + 1, tim->tm_mday, tim->tm_hour, tim->tm_min, tim->tm_sec);
-#endif
-    return cur_time;
-}
-static double __get_printfTime_d()
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    double t = tv.tv_sec + (double)tv.tv_usec / (1000 * 1000);
-    return t;
-}
-
-// system("color 0");
-//#define mprintf(__format, ...) printf("\33[0;36mline:%d|\33[0;32mtime:%s(\33[0;32m%.6lf)|\33[0;32mpid:%d|\33[0;32mppid:%d\33[0;30m(\33[0;33m%s\33[0;30m)\33[0;35m--\33[0;31m" __format"\033[0m",__LINE__,__get_printfTime(),__get_printfTime_d(),getpid(),getppid(),__FUNCTION__, ##__VA_ARGS__)
 /**
- @brief printf函数的扩展，输出添加时间，文件，行，pid，ppid，函数
+ @brief printf函数的扩展，输出添加文件，行，函数
  @param -参考printf函数
  @return 参考printf函数
 */
 #define mprintf(format, ...)\
     do{\
-        printf(GREEN"time:%s(%.6lf)"BOLDBLACK"|"RESET CYAN"%s:%d"BOLDBLACK"|"RESET YELLOW"pid:%d"BLUE"(%s)"MAGENTA"---"RESET format, __get_printfTime(), __get_printfTime_d(),__FILE__, __LINE__,  getpid(), __FUNCTION__, ##__VA_ARGS__);fflush(stdout);\
+        printf(CYAN"%s:%d"BOLDBLACK"|"RESET BLUE"(%s)"MAGENTA"---"RESET format,__FILE__, __LINE__,  __FUNCTION__, ##__VA_ARGS__);fflush(stdout);\
     } while (0)
 
 // 从文件获取字库数据,成功返回读取的字符数

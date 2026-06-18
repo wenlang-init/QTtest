@@ -9,19 +9,6 @@
 
 // #include <QMqttClient>
 #include "src/sql/sql_engine.h"
-
-// #define TTTT
-#ifdef TTTT
-# include "src/messageWidget/listmessageview.h"
-# include "src/video/videowidget.h"
-# include "src/graphics/graphicswidget.h"
-# include "src/qmlList/listw.h"
-# include "src/audio/widget.h"
-# include "src/layout/wlayout.h"
-# include "src/fftw/widegtfft.h"
-#endif // ifdef TTTT
-
-
 #include <QVBoxLayout>
 #include "XxwCustomPlot.h"
 
@@ -51,7 +38,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     // addWindow("calc.exe",    "ApplicationFrameWindow", "计算器");
-    // addWindow("calc.exe",    nullptr,      "计算器");
+    // addWindow("calc.exe", nullptr, "计算器");
     // addWindow("mspaint.exe", "MSPaintApp", "无标题 - 画图");
     // addWindow("msconfig",    "#32769",                 "[Desktop]");
 
@@ -116,66 +103,6 @@ MainWindow::MainWindow(QWidget *parent)
     // mthread->start();
 
     _init();
-
-#ifdef TTTT
-
-    //////////////////////////
-    videoWidget *vw = new videoWidget;
-    vw->resize(600, 800);
-    vw->show();
-    vw->setAttribute(Qt::WA_DeleteOnClose, true);
-    connect(vw, &videoWidget::destroyed, this, [&]() {
-        qDebug() << "videoWidget -------" << sender();
-    });
-
-    ListMessageView *mqw = new ListMessageView;
-    mqw->resize(600, 800);
-    mqw->show();
-    mqw->setAttribute(Qt::WA_DeleteOnClose, true);
-    connect(mqw, &ListMessageView::destroyed, this, [&]() {
-        qDebug() << "ListMessageView -------" << sender();
-    });
-
-    GraphicsWidget *gpw = new GraphicsWidget;
-    gpw->resize(600, 800);
-    gpw->show();
-    gpw->setAttribute(Qt::WA_DeleteOnClose, true);
-    connect(gpw, &GraphicsWidget::destroyed, this, [&]() {
-        qDebug() << "GraphicsWidget -------" << sender();
-    });
-
-    ListW *lw = new ListW;
-    lw->resize(600, 800);
-    lw->show();
-    lw->setAttribute(Qt::WA_DeleteOnClose, true);
-    connect(lw, &ListW::destroyed, this, [&]() {
-        qDebug() << "ListW -------" << sender();
-    });
-
-    Widget *audiow = new Widget;
-    audiow->resize(600, 800);
-    audiow->show();
-    audiow->setAttribute(Qt::WA_DeleteOnClose, true);
-    connect(audiow, &Widget::destroyed, this, [&]() {
-        qDebug() << "Widget -------" << sender();
-    });
-
-    wLayout *wl = new wLayout;
-    wl->resize(600, 800);
-    wl->show();
-    wl->setAttribute(Qt::WA_DeleteOnClose, true);
-    connect(wl, &wLayout::destroyed, this, [&]() {
-        qDebug() << "wLayout -------" << sender();
-    });
-    widegtFFT *wft = new widegtFFT;
-    wft->resize(600, 800);
-    wft->show();
-    wft->setAttribute(Qt::WA_DeleteOnClose, true);
-    connect(wft, &widegtFFT::destroyed, this, [&]() {
-        qDebug() << "widegtFFT -------" << sender();
-    });
-
-#endif // if 0
 }
 
 MainWindow::~MainWindow()

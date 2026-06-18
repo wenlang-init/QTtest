@@ -8,5 +8,7 @@
         <file>src/layout/resource/pic/02.jpg</file>
         <file>src/layout/resource/pic/avatar.png</file>
         <file>src/souyin/edittxt.qml</file>
+        <file>src/screen/imageFetcher.qml</file>
+        <file>src/fftw/customplot.qml</file>
     </qresource>
 </RCC>

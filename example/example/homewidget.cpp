@@ -17,7 +17,10 @@
 #include "src/souyin/shouyinw.h"
 #if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
 # include "src/fftw/widegtfft.h"
+# include "src/screen/screenwidget.h"
+# include "src/screen/qmlwidgetloader.h"
 #endif // if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
+#include "src/fftw/customplotqmlwidget.h"
 
 homewidget::homewidget(QWidget *parent)
 {
@@ -99,6 +102,15 @@ void homewidget::init()
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#f5f5f5.svg";
     witem.name = "异环抽卡";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#f57c00.svg";
+    witem.name = "截屏1";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#f44336.svg";
+    witem.name = "截屏2";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#ff9800.svg";
+    witem.name = "customplotqml";
     m_widgetList.append(witem);
 
     foreach(auto node, m_widgetList) {
@@ -193,6 +205,18 @@ void homewidget::showWidget(int index)
 
     case 8:
         w = new MainWindow;
+        break;
+
+    case 9:
+        w = new screenWidgetShow;
+        break;
+
+    case 10:
+        w = new qmlWidgetLoader;
+        break;
+
+    case 11:
+        w = new CustomPlotQMLWidget;
         break;
 
     default:

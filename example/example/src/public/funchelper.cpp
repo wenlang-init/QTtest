@@ -7,6 +7,7 @@
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QFileIconProvider>
+#include "cxxlog.h"
 
 FuncHelper& FuncHelper::getInstance()
 {
@@ -335,6 +336,585 @@ bool FuncHelper::killExec(const QString& sExename)
     return true;
 }
 
+#if defined(Q_OS_WINDOWS)
+# include <psapi.h>
+
+// 根据类名 获取HWND,窗口
+HWND FuncHelper::getWindowHWNDFromClassname(QString className, QRect& rect)
+{
+    HWND hwnd = FindWindowA(className.toLocal8Bit(), NULL);
+
+    // FindWindowW((LPCWSTR)className.utf16(), NULL);
+
+    // if(!IsWindowVisible(hwnd))return 0;
+    RECT mrect;
+
+    // 获得控件相对与对话框或者（设备屏幕）的坐标大小
+    if (GetWindowRect(hwnd, &mrect)) {
+        int w, h;
+        w = mrect.right - mrect.left;
+        h = mrect.bottom - mrect.top;
+        rect.setRect(mrect.left, mrect.top, w, h);
+    }
+    return hwnd;
+}
+
+// 根据窗口名 获取HWND,窗口
+HWND FuncHelper::getWindowHWNDFromTitle(QString title, QRect& rect)
+{
+    HWND hwnd = FindWindowA(NULL, title.toLocal8Bit());
+    RECT mrect;
+
+    // if(!IsWindowVisible(hwnd))return 0;
+    if (GetWindowRect(hwnd, &mrect)) {
+        int w, h;
+        w = mrect.right - mrect.left;
+        h = mrect.bottom - mrect.top;
+        rect.setRect(mrect.left, mrect.top, w, h);
+    }
+    return hwnd;
+}
+
+QRect FuncHelper::getRectFromHwnd(HWND wind)
+{
+    QRect rect;
+
+    // if(!IsWindowVisible(hwnd))return rect;
+    RECT mrect;
+
+    if (GetWindowRect(wind, &mrect)) {
+        int w, h;
+        w = mrect.right - mrect.left;
+        h = mrect.bottom - mrect.top;
+        rect.setRect(mrect.left, mrect.top, w, h);
+    }
+    return rect;
+}
+
+// 获取窗口rect,无边框
+QRect FuncHelper::getRectNoBorderFromHwnd(HWND wind)
+{
+    // if(!IsWindowVisible(hwnd))return rect;
+    QRect rect;
+
+    RECT mrect1, mrect2;
+
+    if (!GetWindowRect(wind, &mrect1)) {
+        return rect;
+    }
+
+    if (!GetClientRect(wind, &mrect2)) {
+        return rect;
+    }
+    int x, y, w, h, borderx, bordery;
+    x = mrect1.left;
+    y = mrect1.top;
+    borderx = mrect1.right - mrect1.left - mrect2.right;
+    bordery = mrect1.bottom - mrect1.top - mrect2.bottom;
+    w = mrect2.right;
+    h = mrect2.bottom;
+
+    x = x + borderx / 2;
+    y = y + bordery - borderx / 2;
+
+    rect.setRect(x, y, w, h);
+
+    return rect;
+}
+
+// 根据HWND 获取进程ID
+DWORD FuncHelper::getWindowProcessID(HWND wind)
+{
+    DWORD process_ID = 0;
+
+    GetWindowThreadProcessId(wind, &process_ID);
+
+    return process_ID;
+}
+
+// 根据HWND 获取进程文件名(含路径)
+QString FuncHelper::getWindowFilePathName(HWND wind)
+{
+    QString str;
+    char    pszFileName[4096] = { 0 };
+    DWORD   process_ID = 0;
+    BOOL    ERR = GetWindowThreadProcessId(wind, &process_ID);
+
+    if (!ERR) return str;
+
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,
+                                  FALSE,
+                                  process_ID);
+
+    if (!hProcess) return str;
+
+    int ret = GetModuleFileNameExA(hProcess, NULL, (LPSTR)pszFileName,
+                                   sizeof(pszFileName));
+
+    if (!ret) return str;
+
+    str = QString::fromLocal8Bit(pszFileName);
+    str.replace("\\", "/");
+    return str;
+}
+
+// 根据HWND 获取进程窗口名
+QString FuncHelper::getWindowName(HWND wind)
+{
+    QString str;
+    char    pszFileName[4096] = { 0 };
+
+    GetWindowTextA(wind, (LPSTR)pszFileName,
+                   sizeof(pszFileName));
+    str = QString::fromLocal8Bit(pszFileName);
+    return str;
+}
+
+// 根据HWND 获取进程窗口类名
+QString FuncHelper::getWindowClass(HWND wind)
+{
+    QString str;
+    char    pszFileName[4096] = { 0 };
+
+    GetClassNameA(wind, (LPSTR)pszFileName,
+                  sizeof(pszFileName));
+    str = QString::fromLocal8Bit(pszFileName);
+    return str;
+}
+
+struct FindWindowData {
+    DWORD processId;
+    HWND  hWnd;
+};
+
+// 根据进程ID 获取显示的窗口的hwnd
+HWND FuncHelper::getWindowByPID(DWORD pid)
+{
+    FindWindowData data{ pid, nullptr };
+    auto EnumWindowsProc =
+        [](HWND hWnd, LPARAM lParam) {
+            DWORD pid = 0;
+
+            GetWindowThreadProcessId(hWnd, &pid);
+            auto data =
+                reinterpret_cast<FindWindowData *>(lParam);
+
+            if ((pid == data->processId) &&
+                IsWindowVisible(hWnd)) {
+                data->hWnd = hWnd;
+                return FALSE; // 找到后停止枚举
+            }
+            return TRUE;
+        };
+
+    // 枚举系统中所有顶级窗口，并将每个窗口的句柄传递给用户定义的回调函数
+    EnumWindows(EnumWindowsProc, reinterpret_cast<LPARAM>(&data));
+
+    // if (data.hWnd) {
+    //     ShowWindow(data.hWnd, SW_MAXIMIZE);
+    //     SetForegroundWindow(data.hWnd);
+    // }
+
+    return data.hWnd;
+}
+
+// 根据进程ID 获取显示的窗口的hwnd等信息
+QList<HWND>FuncHelper::getWindowHwndList()
+{
+    QList<HWND> list;
+    auto EnumWindowsProc =
+        [](HWND hWnd, LPARAM lParam) {
+            DWORD pid = 0;
+
+            GetWindowThreadProcessId(hWnd, &pid);
+            auto data =
+                reinterpret_cast<QList<HWND> *>(lParam);
+
+            if (IsWindowVisible(hWnd)) {
+                data->append(hWnd);
+
+                // return FALSE; // 停止枚举
+            }
+            return TRUE;
+        };
+
+    // 枚举系统中所有顶级窗口，并将每个窗口的句柄传递给用户定义的回调函数
+    EnumWindows(EnumWindowsProc, reinterpret_cast<LPARAM>(&list));
+
+    return list;
+}
+
+// 根据进程ID 获取显示的窗口的hwnd等信息
+QList<FuncHelper::WindowInfo>FuncHelper::getWindowInfoList()
+{
+    QList<FuncHelper::WindowInfo> list;
+    auto EnumWindowsProc =
+        [](HWND hWnd, LPARAM lParam) {
+            DWORD pid = 0;
+
+            GetWindowThreadProcessId(hWnd, &pid);
+            auto data =
+                reinterpret_cast<QList<FuncHelper::WindowInfo> *>(lParam);
+
+            if (IsWindowVisible(hWnd)) {
+                WindowInfo winfo;
+                winfo.hwnd = hWnd;
+                winfo.processID = FuncHelper::getInstance().
+                                  getWindowProcessID(hWnd);
+                winfo.className = FuncHelper::getInstance().
+                                  getWindowClass(hWnd);
+                winfo.windowName = FuncHelper::getInstance().
+                                   getWindowName(hWnd);
+                winfo.filePathName = FuncHelper::getInstance().
+                                     getWindowFilePathName(hWnd);
+                data->append(winfo);
+
+                // return FALSE; // 停止枚举
+            }
+            return TRUE;
+        };
+
+    // 枚举系统中所有顶级窗口，并将每个窗口的句柄传递给用户定义的回调函数
+    EnumWindows(EnumWindowsProc, reinterpret_cast<LPARAM>(&list));
+
+    return list;
+}
+
+double FuncHelper::getSystemZoom()
+{
+    HWND hwd = ::GetDesktopWindow();
+
+    // HDC hdc = ::GetDC(hwd);
+    // // 每英寸像素点数
+    // int zoom = GetDeviceCaps(hdc, LOGPIXELSX);
+    int zoom = GetDpiForWindow(hwd);
+    double dpi = 1;
+
+    switch (zoom) {
+    case 96:
+        dpi = 1;
+        break;
+
+    case 120:
+        dpi = 1.25;
+        break;
+
+    case 144:
+        dpi = 1.5;
+        break;
+
+    case 192:
+        dpi = 2;
+        break;
+
+    default:
+        break;
+    }
+    return dpi;
+}
+
+double FuncHelper::getSystemPixZoom()
+{
+    // 获取窗口当前显示的监视器
+    HWND hWnd = GetDesktopWindow();
+    HMONITOR hMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+
+    // 获取监视器逻辑宽度
+    MONITORINFOEX monitorInfo;
+
+    monitorInfo.cbSize = sizeof(monitorInfo);
+    GetMonitorInfo(hMonitor, &monitorInfo);
+    int cxLogical = (monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left);
+
+    // 获取监视器物理宽度
+    DEVMODE dm;
+    dm.dmSize = sizeof(dm);
+    dm.dmDriverExtra = 0;
+    EnumDisplaySettings(monitorInfo.szDevice, ENUM_CURRENT_SETTINGS, &dm);
+    int cxPhysical = dm.dmPelsWidth;
+
+    return cxPhysical * 1.0 / cxLogical;
+}
+
+// 获取wind的窗口到image
+bool FuncHelper::getScreenImage(HWND wind, QImage& image, bool hasBorder)
+{
+    RECT   rect;
+    int    m_width;
+    int    m_height;
+    double zoom = getSystemPixZoom();
+
+    if (!hasBorder) {
+        // 获得控件相自身的坐标大小，获取的区域不包含边框，top和left都为0
+        if (GetClientRect(wind, &rect)) {
+            m_width = rect.right * zoom;
+            m_height = rect.bottom * zoom;
+        } else {
+            // return false;
+            m_width = GetSystemMetrics(SM_CXSCREEN) * zoom;
+            m_height = GetSystemMetrics(SM_CYSCREEN) * zoom;
+        }
+    } else {
+        // 获得控件相对与对话框或者（设备屏幕）的坐标大小，获取的区域包含边框
+        if (GetWindowRect(wind, &rect)) {
+            m_width = (rect.right - rect.left) * zoom;
+            m_height = (rect.bottom - rect.top) * zoom;
+        } else {
+            m_width = GetSystemMetrics(SM_CXSCREEN) * zoom;
+            m_height = GetSystemMetrics(SM_CYSCREEN) * zoom;
+        }
+    }
+    HDC hdcScreen = GetDC(wind);
+    HDC hdcMem = CreateCompatibleDC(hdcScreen);
+
+    // 创建位图
+    HBITMAP hBitmap = CreateCompatibleBitmap(hdcScreen, m_width, m_height);
+    SelectObject(hdcMem, hBitmap);
+
+    // 开始捕获，获取捕获数据
+# if 0
+
+    // 通过向目标窗口发送 WM_PRINT 或 WM_PRINTCLIENT 消息，让窗口自身将内容绘制到指定的 DC。
+    // 这个过程在目标应用程序内部完成，因此能够捕获窗口的真实绘制内容，
+    // 包括 DWM（桌面窗口管理器）效果和部分复杂控件
+    // PrintWindow 是同步阻塞调用，如果目标窗口未响应消息，调用可能会挂起
+    PrintWindow(wind, hdcMem, PW_CLIENTONLY);
+# else // if 0
+    // 源设备上下文（DC）复制像素到目标 DC
+    // 它完全在调用线程中执行，不依赖目标窗口的绘制逻辑，因此对隐藏窗口或桌面窗口通常有效，
+    // 但对于使用 透明度、双缓冲或硬件加速（如DirectX/OpenGL） 的窗口，
+    // 可能会出现黑屏或无法正确捕获的情况
+    BitBlt(hdcMem, rect.left, rect.top, rect.right, rect.bottom,
+           hdcScreen, 0, 0, SRCCOPY);
+# endif // if 0
+    QVector<unsigned char> m_screenshotData(m_width * m_height * 4, 0);
+    GetBitmapBits(hBitmap,
+                  m_screenshotData.size(),
+                  m_screenshotData.data());
+    image = QImage(m_screenshotData.data(), m_width, m_height
+                   , QImage::Format_ARGB32).copy();
+
+    DeleteObject(hBitmap);
+    DeleteDC(hdcMem);
+    ReleaseDC(wind, hdcScreen);
+    return true;
+}
+
+////////////DXGI截屏/////////////////
+# include <d3d11.h>
+# include <dxgi1_2.h>
+# pragma comment(lib, "d3d11.lib")
+# pragma comment(lib, "dxgi.lib")
+# pragma comment(lib, "User32.lib")
+bool FuncHelper::getWindowScreenImageFromDXGI(QImage& image, const QRect& rect)
+{
+    // 支持的驱动程序类型
+    D3D_DRIVER_TYPE DriverTypes[] =
+    { D3D_DRIVER_TYPE_HARDWARE, D3D_DRIVER_TYPE_WARP, D3D_DRIVER_TYPE_REFERENCE,
+    };
+    UINT NumDriverTypes = ARRAYSIZE(DriverTypes);
+
+    // 支持的功能级别
+    D3D_FEATURE_LEVEL FeatureLevels[] = {
+        D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0,
+        D3D_FEATURE_LEVEL_9_1 };
+    UINT NumFeatureLevels = ARRAYSIZE(FeatureLevels);
+
+    // 创建D3D设备
+    D3D_FEATURE_LEVEL FeatureLevel;
+    ID3D11Device     *_pDX11Dev = nullptr;
+    ID3D11DeviceContext *_pDX11DevCtx = nullptr;
+    HRESULT hr = 0;
+
+    for (UINT index = 0; index < NumDriverTypes; index++) {
+        hr = D3D11CreateDevice(nullptr,
+                               DriverTypes[index],
+                               nullptr,
+                               0,
+                               FeatureLevels,
+                               NumFeatureLevels,
+                               D3D11_SDK_VERSION,
+                               &_pDX11Dev,
+                               &FeatureLevel,
+                               &_pDX11DevCtx);
+
+        if (SUCCEEDED(hr)) break;
+    }
+
+    // 获取DXGITest设备
+    IDXGIDevice *_pDXGITestDev = nullptr;
+    hr = _pDX11Dev->QueryInterface(__uuidof(IDXGIDevice),
+                                   reinterpret_cast<void **>(&_pDXGITestDev));
+
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    // 获取DXGITest适配器
+    IDXGIAdapter *_pDXGITestAdapter = nullptr;
+    hr = _pDXGITestDev->GetParent(__uuidof(IDXGIAdapter),
+                                  reinterpret_cast<void **>(&_pDXGITestAdapter));
+
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    // 获取输出
+    UINT i = 0;
+    IDXGIOutput *_pDXGIOutput = nullptr;
+    hr = _pDXGITestAdapter->EnumOutputs(i, &_pDXGIOutput);
+
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    // 获取输出描述结构
+    DXGI_OUTPUT_DESC DesktopDesc;
+    _pDXGIOutput->GetDesc(&DesktopDesc);
+
+    // 请求接口给Output1
+    IDXGIOutput1 *_pDXGIOutput1 = nullptr;
+    hr =
+        _pDXGIOutput->QueryInterface(__uuidof(IDXGIOutput1),
+                                     reinterpret_cast<void **>(&_pDXGIOutput1));
+
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    // 创建桌面副本
+    IDXGIOutputDuplication *_pDXGIOutputDup = nullptr;
+    hr = _pDXGIOutput1->DuplicateOutput(_pDX11Dev, &_pDXGIOutputDup);
+
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    for (int i = 0; i < 100; i++) {
+        IDXGIResource *desktopResource = nullptr;
+        DXGI_OUTDUPL_FRAME_INFO frameInfo;
+        hr = _pDXGIOutputDup->AcquireNextFrame(20, &frameInfo, &desktopResource);
+
+        if (FAILED(hr)) {
+            if (hr == DXGI_ERROR_WAIT_TIMEOUT) {
+                if (desktopResource) {
+                    desktopResource->Release();
+                    desktopResource = nullptr;
+                    qWarning() << " AcquireNextFrame超时";
+                    --i;
+                    continue;
+                }
+                _pDXGIOutputDup->ReleaseFrame();
+            } else {
+                qCritical() << " AcquireNextFrame错误: " << hr;
+                return false;
+            }
+        }
+
+        if (desktopResource == nullptr) {
+            qWarning() << " AcquireNextFrame超时";
+            --i;
+            continue;
+        }
+
+        // 查询下一帧暂存缓冲区
+        ID3D11Texture2D *_pDX11Texture = nullptr;
+        hr = desktopResource->QueryInterface(__uuidof(
+                                                 ID3D11Texture2D),
+                                             reinterpret_cast<void **>(&
+                                                                       _pDX11Texture));
+        desktopResource->Release();
+        desktopResource = nullptr;
+
+        if (FAILED(hr)) {
+            return false;
+        }
+
+        // 复制旧描述
+        ID3D11Texture2D *_pCopyBuffer = nullptr;
+        D3D11_TEXTURE2D_DESC desc;
+
+        if (_pDX11Texture) {
+            _pDX11Texture->GetDesc(&desc);
+        } else if (_pCopyBuffer) {
+            _pCopyBuffer->GetDesc(&desc);
+        } else {
+            qCritical() << " GetDesc错误";
+            return false;
+        }
+
+        // 为填充帧图像创建一个新的暂存缓冲区
+        if (_pCopyBuffer == nullptr) {
+            D3D11_TEXTURE2D_DESC CopyBufferDesc;
+            CopyBufferDesc.Width = desc.Width;
+            CopyBufferDesc.Height = desc.Height;
+            CopyBufferDesc.MipLevels = 1;
+            CopyBufferDesc.ArraySize = 1;
+            CopyBufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+            CopyBufferDesc.SampleDesc.Count = 1;
+            CopyBufferDesc.SampleDesc.Quality = 0;
+            CopyBufferDesc.Usage = D3D11_USAGE_STAGING;
+            CopyBufferDesc.BindFlags = 0;
+            CopyBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+            CopyBufferDesc.MiscFlags = 0;
+
+            hr = _pDX11Dev->CreateTexture2D(&CopyBufferDesc,
+                                            nullptr,
+                                            &_pCopyBuffer);
+
+            if (FAILED(hr)) {
+                qCritical() << " CreateTexture2D错误: " << hr;
+                return false;
+            }
+        }
+
+        if (_pDX11Texture) {
+            // 将下一个暂存缓冲区复制到新的暂存缓冲区
+            _pDX11DevCtx->CopyResource(_pCopyBuffer, _pDX11Texture);
+        }
+
+        // 为映射位创建暂存缓冲区
+        IDXGISurface *CopySurface = nullptr;
+        hr = _pCopyBuffer->QueryInterface(__uuidof(IDXGISurface),
+                                          (void **)&CopySurface);
+
+        if (FAILED(hr)) {
+            qCritical() << " QueryInterface错误: " << hr;
+            return false;
+        }
+
+        // 将位复制到用户空间
+        DXGI_MAPPED_RECT MappedSurface;
+        hr = CopySurface->Map(&MappedSurface, DXGI_MAP_READ);
+
+        if (hr >= 0) {
+            // 获取屏幕尺寸
+            int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+            int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+            image = QImage(MappedSurface.pBits,
+                           screenWidth,
+                           screenHeight,
+                           QImage::Format_ARGB32
+                           ).copy(rect);
+        }
+
+        qDebug() << " 完成: " << i;
+
+        CopySurface->Unmap();
+        CopySurface->Release();
+        CopySurface = nullptr;
+
+        if (_pDXGIOutputDup) {
+            _pDXGIOutputDup->ReleaseFrame();
+        }
+    }
+    return true;
+}
+
+/////////////////////////////
+
+#endif // if defined(Q_OS_WINDOWS)
+
 #include <stdio.h>
 #if defined(Q_OS_WINDOWS)
 # include <windows.h>
@@ -347,6 +927,35 @@ bool FuncHelper::killExec(const QString& sExename)
 #endif // if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
 
 #if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
+
+bool FuncHelper::setThreadPriorityToTopPriority(const QString& sThreadName)
+{
+    pthread_attr_t attr; // 创建一个用于存储线程属性的结构体
+
+    pthread_attr_init(&attr);
+
+    int policy = SCHED_FIFO;
+    pthread_t threadId = pthread_self();               // 获取当前线程的ID
+    pthread_attr_setschedpolicy(&attr, policy);        // 设置线程调度策略为实时FIFO
+
+    int iMaxPriority = sched_get_priority_max(policy); // 获取当前系统最大的优先级值
+
+    struct sched_param param;                          // 创建一个sched_param结构体设置线程优先级
+    pthread_attr_getschedparam(&attr, &param);         // 获取默认的线程属性
+    auto iNowPriority = param.sched_priority;
+    param.sched_priority = iMaxPriority;               // 设置线程的优先级为最高优先级
+    pthread_setschedparam(threadId, policy, &param);   // 将线程的调度参数和优先级应用到线程上
+    pthread_attr_destroy(&attr);                       // 销毁线程属性
+    INFO_LOG_CXX(
+        " ************ thread:0x%x_%lu, name:%s setPriority to topPriority:%d => %d ************\n",
+        threadId,
+        threadId,
+        sThreadName.toStdString().c_str(),
+        iNowPriority,
+        iMaxPriority);
+    return true;
+}
+
 int FuncHelper::setProcessCPU(int pid, int cpu)
 {
     int cpukercount = sysconf(_SC_NPROCESSORS_ONLN); // CPU核心总数

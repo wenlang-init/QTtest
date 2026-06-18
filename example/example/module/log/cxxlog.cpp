@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <chrono>
 #include <stdarg.h>
+#include <string>
 
 // #include <string.h>
 #include <cstring>
@@ -368,6 +369,13 @@ void CxxLog::addLog(const LOG_TYPE   & logType,
                     const char        *_file,
                     const int          line,
                     const std::string& logMessage) {
+#if defined(WIN32) || defined(WIN64)
+
+    if (isFirst) {
+        isFirst = false;
+        system("color 0");
+    }
+#endif // if defined(WIN32) || defined(WIN64)
     const char *typemsg;
     const char *function = const_cast<const char *>(_function);
     const char *file = _file;

@@ -21,6 +21,7 @@ namespace Ui {
 class widegtFFT;
 }
 class customPlotCurve;
+class CustomPlotQMLWidget;
 class widegtFFT : public QWidget {
     Q_OBJECT
 

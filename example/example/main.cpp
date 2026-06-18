@@ -20,13 +20,111 @@
 #include "src/layout/wlayout.h"
 #include "src/souyin/shouyinw.h"
 #include "homewidget.h"
-#include "input_method_widget.h"
+
+// #include "input_method_widget.h"
+#ifdef _MSC_VER
+# include "paddle_inference_api.h"
+#endif // ifdef _MSC_VER
 
 // #include "lognone.h"
 #if defined(Q_OS_WINDOWS)
 # include "QBreakpadHandler.h"
 #endif // if defined(Q_OS_WINDOWS)
 #include "cxxlog.h"
+
+void paddletest()
+{
+#ifdef _MSC_VER
+
+    // 创建默认配置对象
+    paddle_infer::Config config;
+    QString prog_file = "D:/software/PaddleOCR/resnet50/inference.pdmodel";
+    QString params_file =
+        "D:/software/PaddleOCR/resnet50/inference.pdiparams";
+
+    // 设置推理模型路径，即为本小节第2步中下载的模型
+    config.SetModel(prog_file.toStdString(), params_file.toStdString());
+
+    if (0) {
+        QByteArray prog_str, params_str;
+        QFile f1(prog_file), f2(params_file);
+
+        if (f1.open(QIODevice::ReadOnly)) {
+            prog_str = f1.readAll();
+            f1.close();
+        }
+
+        if (f2.open(QIODevice::ReadOnly)) {
+            params_str = f2.readAll();
+            f2.close();
+        }
+
+        // 从内存中加载模型
+        config.SetModelBuffer(prog_str.data(), prog_str.size(),
+                              params_str.data(), params_str.size());
+    }
+
+    if (config.model_from_memory()) {
+        // 判断是否从内存中加载模型
+        qDebug() << "Load model from is memory";
+    }
+
+    // 启用 GPU 和 MKLDNN 推理
+    // config.EnableUseGpu(100, 0);
+    config.EnableMKLDNN();
+
+    // 设置 CPU 加速库线程数为 10
+    config.SetCpuMathLibraryNumThreads(16);
+
+    // 通过 API 获取 CPU 信息
+    int num_thread = config.cpu_math_library_num_threads();
+    qDebug() << "CPU thread number is: " << num_thread;
+
+    // 开启 内存/显存 复用
+    config.EnableMemoryOptim();
+
+    ////////////////////////////////////////////////////////////
+    // 根据 Confi 对象创建预测器对象
+    auto predictor = paddle_infer::CreatePredictor(config);
+
+    ///////////////////////////////////////////////////////////
+    // 获取输入 Tensor
+    auto input_names = predictor->GetInputNames();
+    auto input_tensor = predictor->GetInputHandle(input_names[0]);
+
+    // 设置输入 Tensor 的维度信息
+    std::vector<int> INPUT_SHAPE = { 1, 3, 224, 224 };
+    input_tensor->Reshape(INPUT_SHAPE);
+
+    // 准备输入数据
+    int input_size = 1 * 3 * 224 * 224;
+    std::vector<float> input_data(input_size, 1);
+
+    // 设置输入 Tensor 数据
+    input_tensor->CopyFromCpu(input_data.data());
+
+    ///////////////////////////////////////////////////////////
+    // 执行推理
+    predictor->Run();
+
+    ///////////////////////////////////////////////////////////
+    // 获取 Output Tensor
+    auto output_names = predictor->GetOutputNames();
+    auto output_tensor = predictor->GetOutputHandle(output_names[0]);
+
+    // 获取 Output Tensor 的维度信息
+    std::vector<int> output_shape = output_tensor->shape();
+    int output_size = std::accumulate(output_shape.begin(),
+                                      output_shape.end(),
+                                      1,
+                                      std::multiplies<int>());
+
+    // 获取 Output Tensor 的数据
+    std::vector<float> output_data;
+    output_data.resize(output_size);
+    output_tensor->CopyToCpu(output_data.data());
+#endif // ifdef _MSC_VER
+}
 
 #if defined(_WIN32) || defined(_WIN64)
 # include <windows.h>
@@ -322,6 +420,8 @@ int main(int argc, char *argv[])
             qDebug() << "homewidget -------" << w;
         });
     }
+
+    paddletest();
 
     int ret = a.exec();
 

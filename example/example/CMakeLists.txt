@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.21)
 
 project(example VERSION 0.1 LANGUAGES CXX)
 
@@ -85,6 +85,10 @@ set(fftsources
     src/fftw/gensignalwidget.h
     src/fftw/gensignalwidget.cpp
     src/fftw/gensignalwidget.ui
+    src/fftw/customplotitem.h
+    src/fftw/customplotitem.cpp
+    src/fftw/customplotqmlwidget.h
+    src/fftw/customplotqmlwidget.cpp
 )
 
 set(souyinsources
@@ -123,6 +127,25 @@ set(publicsources
     src/public/lserialport.cpp
     src/public/lserialport.h
 )
+if(WIN32)
+    set(publicsources
+        ${publicsources}
+        src/public/dxgigetscreen.cpp
+        src/public/dxgigetscreen.h
+    )
+endif()
+
+set(screensources
+    src/screen/screenwidget.h
+    src/screen/screenwidget.cpp
+    src/screen/ffmpegscreen.h
+    src/screen/ffmpegscreen.cpp
+    src/screen/imageprovider.cpp
+    src/screen/imageprovider.h
+    src/screen/qmlwidgetloader.cpp
+    src/screen/qmlwidgetloader.h
+    #src/screen/imageFetcher.qml
+)
 
 set(MODULE_SOURCES
     ${mwsources}
@@ -136,10 +159,12 @@ set(MODULE_SOURCES
     ${sqosources}
     ${publicsources}
 )
+
 if(WIN32 OR LINUX)
     set(MODULE_SOURCES
         ${MODULE_SOURCES}
         ${fftsources}
+        ${screensources}
     )
 endif()
 
@@ -180,6 +205,14 @@ qt_add_executable(example
     ${PROJECT_SOURCES}
     ${APP_RESOURCES}
 )
+
+# 获取目标的所有运行时依赖DLL，并在POST_BUILD阶段自动复制到可执行文件目录
+# add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+#     COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#         $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}>
+#         $<TARGET_FILE_DIR:${PROJECT_NAME}>
+#     COMMAND_EXPAND_LISTS
+# )
 
 target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/shellbulid/build.sh)
 target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/shellbulid/pack.sh)
@@ -262,6 +295,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/")
 # 引入cmake的模块
 include(enableWraning.cmake)
+include(copyDLL.cmake)
 #target_set_warnings(${PROJECT_NAME} true false)
 
 #set(CMAKE_BUILD_TYPE Debug)
@@ -304,6 +338,82 @@ if(WIN32)
     #      set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE ON)
     # endif()
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE OFF)
+endif()
+
+# opencv库
+set(OPENCVPATH D:/software/opencv/libs)
+if(WIN32)
+    if(MSVC)
+        #set(OpenCV_STATIC ON)
+        find_package(OpenCV REQUIRED
+            HINTS ${OPENCVPATH}/OpenCV-MSVC-x64-5.0.0
+            # 或者使用 PATHS，但 HINTS 优先级更高
+            NO_DEFAULT_PATH   # 如果加上，则完全忽略默认路径
+        )
+        target_include_directories(${PROJECT_NAME} PRIVATE ${OpenCV_INCLUDE_DIRS})
+        target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS})
+
+        # target_include_directories(${PROJECT_NAME} PRIVATE
+        #     ${OPENCVPATH}/OpenCV-MSVC-x64-5.0.0/include
+        # )
+        # target_link_directories(${PROJECT_NAME} PRIVATE
+        #     ${OPENCVPATH}/OpenCV-MSVC-x64-5.0.0/x64/vc16/lib
+        # )
+        # target_link_libraries(${PROJECT_NAME} PRIVATE
+        #     opencv_world500
+        # )
+    else()
+        set(USE_TMOOD 0)
+        if(${USE_TMOOD})
+            #set(OpenCV_DIR ${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64)
+            # CMAKE_PREFIX_PATH 是一个全局变量，find_package 会在这个路径列表中搜索 <package>Config.cmake
+            #list(APPEND CMAKE_PREFIX_PATH ${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64)
+
+            # 告诉 CMake 我们想要静态链接 OpenCV
+            set(OpenCV_STATIC ON)
+            find_package(OpenCV REQUIRED
+                HINTS ${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64
+                # 或者使用 PATHS，但 HINTS 优先级更高
+                NO_DEFAULT_PATH   # 如果加上，则完全忽略默认路径
+            )
+            target_include_directories(${PROJECT_NAME} PRIVATE ${OpenCV_INCLUDE_DIRS})
+            target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS})
+        else()
+            target_include_directories(${PROJECT_NAME} PRIVATE
+                #${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64/include
+                ${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64-shared/include
+            )
+            target_link_directories(${PROJECT_NAME} PRIVATE
+                #${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64/x64/mingw/staticlib
+                ${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64-shared/x64/mingw/lib
+            )
+            target_link_libraries(${PROJECT_NAME} PRIVATE
+                opencv_core500
+                opencv_imgproc500
+                #lapack
+                #blas
+            )
+        endif()
+    endif()
+endif()
+
+# paddle库
+set(PADDLEPATH D:/software/PaddleOCR/paddle_inference)
+if(WIN32)
+    if(MSVC)
+        target_include_directories(${PROJECT_NAME} PRIVATE ${PADDLEPATH}/paddle/include)
+        target_link_directories(${PROJECT_NAME} PRIVATE ${PADDLEPATH}/paddle/lib)
+        target_link_libraries(${PROJECT_NAME} PRIVATE
+            paddle_inference
+        )
+        add_custom_command(TARGET ${PROJECT_NAME}
+           POST_BUILD
+           COMMAND ${CMAKE_COMMAND} -E
+                copy_if_different
+                ${PADDLEPATH}/paddle/lib/paddle_inference.dll
+                "${CMAKE_BINARY_DIR}"
+        )
+    endif()
 endif()
 
 # fftw 库
@@ -373,23 +483,23 @@ elseif(UNIX)
 endif()
 
 # ffmpeg 库
-# set(FFTMPEGPATH ${PROJECT_SOURCE_DIR}/thirdparty/ffmpeg)
-# if(WIN32)
-#     target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/windows/include)
-#     target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/windows/lib)
+set(FFTMPEGPATH ${PROJECT_SOURCE_DIR}/thirdparty/ffmpeg)
+if(WIN32)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/windows/include)
+    target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/windows/lib)
 
-#     target_link_libraries(${PROJECT_NAME} PRIVATE
-#         avcodec avformat avutil
-#         #swresample swscale avdevice avfilter
-#     )
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        avcodec avformat avutil avdevice swscale
+        # swresample avfilter
+    )
 
-#     # add_custom_command(TARGET ${PROJECT_NAME}
-#     #    POST_BUILD
-#     #    COMMAND ${CMAKE_COMMAND} -E
-#     #         copy_if_different
-#     #         ${FFTMPEGPATH}/windows/bin/*.dll
-#     #         "${CMAKE_BINARY_DIR}"
-#     # )
+    # add_custom_command(TARGET ${PROJECT_NAME}
+    #    POST_BUILD
+    #    COMMAND ${CMAKE_COMMAND} -E
+    #         copy_if_different
+    #         ${FFTMPEGPATH}/windows/bin/avcodec-62.dll
+    #         "${CMAKE_BINARY_DIR}"
+    # )
 # elseif(UNIX)
 #     if(LINUX)
 #         target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/include)
@@ -432,7 +542,7 @@ endif()
 #         #     endif()
 #         # endif()
 #     endif()
-# endif()
+ endif()
 
 if(WIN32)
     target_link_libraries(${PROJECT_NAME}
