@@ -72,8 +72,10 @@ void CustomPlotItem::initCustomPlot()
 
     // 可拖动、可缩放、轴可选、图例可选、绘图可选,可多选
     m_customPlot->setInteractions(
-        QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes |
-        QCP::iSelectLegend | QCP::iSelectPlottables | QCP::iMultiSelect);
+        QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes
+
+        // | QCP::iSelectLegend | QCP::iSelectPlottables | QCP::iMultiSelect
+        );
 
     // 鼠标滚动缩放倍率，默认0.85
     // customPlot->axisRect()->setRangeZoomFactor(0.5);
@@ -122,7 +124,7 @@ void CustomPlotItem::mousePressEvent(QMouseEvent *event)
     // ungrabMouse();
 
     // 调用 update() 触发重绘，以显示交互效果
-    update();
+    update(QRect(0, 0, width(), height()));
 }
 
 void CustomPlotItem::mouseReleaseEvent(QMouseEvent *event)
@@ -131,7 +133,7 @@ void CustomPlotItem::mouseReleaseEvent(QMouseEvent *event)
     QCoreApplication::sendEvent(m_customPlot, event);
 
     // 调用 update() 触发重绘，以显示交互效果
-    update();
+    update(QRect(0, 0, width(), height()));
 }
 
 void CustomPlotItem::mouseMoveEvent(QMouseEvent *event)
@@ -140,7 +142,7 @@ void CustomPlotItem::mouseMoveEvent(QMouseEvent *event)
     QCoreApplication::sendEvent(m_customPlot, event);
 
     // 调用 update() 触发重绘，以显示交互效果
-    update();
+    update(QRect(0, 0, width(), height()));
 }
 
 void CustomPlotItem::mouseDoubleClickEvent(QMouseEvent *event)
@@ -148,7 +150,7 @@ void CustomPlotItem::mouseDoubleClickEvent(QMouseEvent *event)
     QCoreApplication::sendEvent(m_customPlot, event);
 
     // 调用 update() 触发重绘，以显示交互效果
-    update();
+    update(QRect(0, 0, width(), height()));
 }
 
 void CustomPlotItem::wheelEvent(QWheelEvent *event)
@@ -156,7 +158,7 @@ void CustomPlotItem::wheelEvent(QWheelEvent *event)
     QCoreApplication::sendEvent(m_customPlot, event);
 
     // 调用 update() 触发重绘，以显示交互效果
-    update();
+    update(QRect(0, 0, width(), height()));
 }
 
 // bool CustomPlotItem::childMouseEventFilter(QQuickItem *item, QEvent *event)

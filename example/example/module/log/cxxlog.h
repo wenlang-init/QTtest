@@ -67,7 +67,7 @@ private:
     bool creatLogFile();
     bool isInit = false;
 
-    bool isFirst = true;
+    // bool isFirst = true;
 
     std::thread m_thread;
     std::mutex m_mutex;                               // 互斥锁保护日志队列

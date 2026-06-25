@@ -82,6 +82,19 @@ public:
         m_customPlot->replot();
     }
 
+    Q_INVOKABLE void addData(const double& key, const double& value,
+                             int index = 0) {
+        if (index < m_customPlot->graphCount()) {
+            if (m_countVector[index] > m_maxcount) {
+                m_countVector[index] = 0;
+                clearData(index);
+            }
+            m_countVector[index]++;
+            m_customPlot->graph(index)->
+            addData(key, value);
+        }
+    }
+
     Q_INVOKABLE void addData(QVector<double>& data, int index) {
         if (index < m_customPlot->graphCount()) {
             if (m_countVector[index] > m_maxcount) {
@@ -124,6 +137,7 @@ public:
 
     Q_INVOKABLE void refresh() {
         m_customPlot->replot();
+        update(QRect(0, 0, width(), height()));
     }
 
     Q_INVOKABLE QVariant getOBJQV() {

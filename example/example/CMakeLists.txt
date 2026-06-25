@@ -332,12 +332,12 @@ target_link_libraries(${PROJECT_NAME}
 # 是否不显示控制台窗口 WIN32_EXECUTABLE属性指定了是否为Windows应用程序生成一个控制台窗口。
 # 默认情况下，CMake会根据项目类型自动设置这个属性，但在某些情况下，你可能需要手动调整它以满足你的需求。
 if(WIN32)
-    # if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    #     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE OFF)
-    # else()
-    #      set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE ON)
-    # endif()
-    set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE OFF)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE OFF)
+    else()
+         set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE ON)
+    endif()
+    #set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE OFF)
 endif()
 
 # opencv库

@@ -24,6 +24,32 @@ public:
         FLOAT
     };
 
+    static int signaTypeToByte(const signaType& bitType) {
+        int byteRate = 1;
+
+        switch (bitType) {
+        case fftw3Object::UINT8:
+        case fftw3Object::INT8:
+            byteRate = 1;
+            break;
+
+        case fftw3Object::UINT16:
+        case fftw3Object::INT16:
+            byteRate = 2;
+            break;
+
+        case fftw3Object::UINT32:
+        case fftw3Object::INT32:
+        case fftw3Object::FLOAT:
+            byteRate = 4;
+            break;
+
+        default:
+            break;
+        }
+        return byteRate;
+    }
+
     // 生成信号
     static void generateSignalData(QByteArray & data,               // 目标数据
                                    WaveformType sigleType,          // 信号类型

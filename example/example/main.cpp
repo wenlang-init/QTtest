@@ -204,6 +204,10 @@ void exitAT() {
 
 int main(int argc, char *argv[])
 {
+#if (defined(_WIN32) || defined(_WIN64)) && defined(QT_DEBUG)
+    system("color 0");
+#endif // if (defined(_WIN32) || defined(_WIN64)) && defined(QT_DEBUG)
+
     // REDIRECT_QTMESSAGE_LOG(nullptr);
     REDIRECT_QTMESSAGE_LOG_CXX(nullptr);
 #if defined(_WIN32) || defined(_WIN64)

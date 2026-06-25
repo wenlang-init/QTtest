@@ -72,9 +72,11 @@ titleWidget::titleWidget(QWidget *parent) : QWidget{parent}
         for (int i = 0; i < list.size(); i++) {
             FuncHelper::WindowInfo& winfo = list[i];
 
-            if (!winfo.windowName.isEmpty()) {
+            // if (!winfo.windowName.isEmpty())
+            {
                 hwndqv = QVariant::fromValue((HWND)winfo.hwnd);
-                combox->addItem(winfo.className, hwndqv);
+                combox->addItem(winfo.windowName + " : " + winfo.className,
+                                hwndqv);
                 m_list.append(winfo);
             }
         }
@@ -87,26 +89,52 @@ titleWidget::titleWidget(QWidget *parent) : QWidget{parent}
         QVariant hwndqv = combox->itemData(index);
         HWND hwnd = hwndqv.value<HWND>();
 
+        int width = 1920, height = 1200;
+        width = QGuiApplication::primaryScreen()->geometry().width();
+        height = QGuiApplication::primaryScreen()->geometry().height();
+    #ifndef USE_QTSCREEN
+        width *= QGuiApplication::primaryScreen()->devicePixelRatio();
+        height *= QGuiApplication::primaryScreen()->devicePixelRatio();
+    #endif // ifndef USE_QTSCREEN
+        QRect recta(0,
+                    0,
+                    width,
+                    height), rect = recta;
+
         if (hwnd) {
             // 最小化
-            if (IsIconic(hwnd)) return;
-
+            // if (IsIconic(hwnd))return;
             // IsZoomed(hwnd); // 最大化
+            recta = FuncHelper::getInstance().getRectFromHwnd(hwnd);
+            rect = FuncHelper::getInstance().getRectNoBorderFromHwnd(hwnd);
         }
 
         if (index > 0) {
             index--;
-            QString str;
+            QString s1, str;
+            s1 =
+                QString(" rectA(%1,%2,%3x%4)")
+                .arg(recta.x()).arg(recta.y())
+                .arg(recta.width()).arg(recta.height());
+            s1 +=
+                QString(",rect(%1,%2,%3x%4)")
+                .arg(rect.x()).arg(rect.y())
+                .arg(rect.width()).arg(rect.height());
+
             str += "HWND:" + QString::number((quintptr)m_list.at(index).hwnd, 16)
-                   + "PROCESS ID:" +
-                   QString::number((quintptr)m_list.at(
-                                       index).processID, 16) + "\n";
+                   + " PROCESS ID:"  +
+                   QString::number((quintptr)m_list.at(index).processID, 16)
+                   + s1 + "\n";
             str += "class name:" + m_list.at(index).className + "\n";
             str += "window name:" + m_list.at(index).windowName + "\n";
             str += "file:" + m_list.at(index).filePathName + "\n";
 
             label->setText(str);
+        } else {
+            label->clear();
         }
+
+
         emit changeWindow(hwnd);
     });
 }
