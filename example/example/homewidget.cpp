@@ -21,6 +21,13 @@
 # include "src/screen/qmlwidgetloader.h"
 #endif // if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
 #include "src/fftw/customplotqmlwidget.h"
+#include "src/map/mapwidget.h"
+#include "src/map/MapDownload/mapdownloadwidget.h"
+#include "src/map/MapView/mapviewwidget.h"
+#include "src/map/MapView2/mapview2widget.h"
+#include "src/map/MapView3/mapview3widget.h"
+#include "src/qwindowkit/windowkitwidget.h"
+#include "src/qwindowkit/witmainwindow.h"
 
 homewidget::homewidget(QWidget *parent)
 {
@@ -111,6 +118,27 @@ void homewidget::init()
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#ff9800.svg";
     witem.name = "customplotqml";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
+    witem.name = "地图";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#ff9800.svg";
+    witem.name = "地图下载";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
+    witem.name = "地图显示1";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#ff9800.svg";
+    witem.name = "地图显示2";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
+    witem.name = "地图显示3";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#ff9800.svg";
+    witem.name = "QWindowKit";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
+    witem.name = "QWindowKitMainW";
     m_widgetList.append(witem);
 
     foreach(auto node, m_widgetList) {
@@ -217,6 +245,34 @@ void homewidget::showWidget(int index)
 
     case 11:
         w = new CustomPlotQMLWidget;
+        break;
+
+    case 12:
+        w = new MapWidget;
+        break;
+
+    case 13:
+        w = new MapDownLoadWidget;
+        break;
+
+    case 14:
+        w = new MapViewWidget;
+        break;
+
+    case 15:
+        w = new MapView2Widget;
+        break;
+
+    case 16:
+        w = new MapView3Widget;
+        break;
+
+    case 17:
+        w = new WindowKitWidget;
+        break;
+
+    case 18:
+        w = new WitMainWindow;
         break;
 
     default:

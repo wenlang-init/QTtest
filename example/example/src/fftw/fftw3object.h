@@ -14,6 +14,10 @@ public:
     explicit fftw3Object(QObject *parent = nullptr);
     ~fftw3Object();
 
+    static int fromPffft(const QVector<float>& sdata,
+                         QVector<float>      & fftdata,
+                         const size_t          N = 2048);
+
     enum signaType {
         UINT8,
         INT8,

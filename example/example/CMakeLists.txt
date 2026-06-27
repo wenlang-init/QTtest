@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(example VERSION 0.1 LANGUAGES CXX)
+project(example VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -25,6 +25,9 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     QuickControls2
     #CorePrivate
     SerialPort
+    Positioning
+    Location
+    Concurrent
 )
 
 # 设置项目范围默认为标准安排。该命令在Qt6包的Core组件中定义，可以像这样加载：
@@ -147,6 +150,64 @@ set(screensources
     #src/screen/imageFetcher.qml
 )
 
+# pffft
+set(pffftsource
+    thirdparty/3rdparty/pffft/pffft.h
+    thirdparty/3rdparty/pffft/pffft.c
+    thirdparty/3rdparty/pffft/fftpack.h
+    thirdparty/3rdparty/pffft/fftpack.c
+)
+
+set(mapsources
+    src/map/mapwidget.h
+    src/map/mapwidget.cpp
+
+    src/map/public/mapStruct.h
+    src/map/public/bingformula.cpp
+    src/map/public/bingformula.h
+
+    # MapDownload
+    src/map/MapDownload/downloadthread.cpp
+    src/map/MapDownload/downloadthread.h
+    src/map/MapDownload/downloadthreads.cpp
+    src/map/MapDownload/downloadthreads.h
+    src/map/MapDownload/formula.cpp
+    src/map/MapDownload/formula.h
+    src/map/MapDownload/mapinput.cpp
+    src/map/MapDownload/mapinput.h
+    src/map/MapDownload/mapinput.ui
+    src/map/MapDownload/mapdownloadwidget.cpp
+    src/map/MapDownload/mapdownloadwidget.h
+    src/map/MapDownload/mapdownloadwidget.ui
+    src/map/MapDownload/mapStruct1.h
+
+    # MapView
+    src/map/MapView/MapView/mapgraphicsview.h
+    src/map/MapView/MapView/mapgraphicsview.cpp
+    src/map/MapView/mapviewwidget.ui
+    src/map/MapView/mapviewwidget.cpp
+    src/map/MapView/mapviewwidget.h
+
+    # MapView2
+    src/map/MapView2/MapView/mapgraphicsview2.cpp
+    src/map/MapView2/MapView/mapgraphicsview2.h
+    src/map/MapView2/mapview2widget.ui
+    src/map/MapView2/mapview2widget.cpp
+    src/map/MapView2/mapview2widget.h
+
+    # MapView3
+    src/map/MapView3/MapView/geturl.cpp
+    src/map/MapView3/MapView/geturl.h
+    src/map/MapView3/MapView/graphicsitemgroup.cpp
+    src/map/MapView3/MapView/graphicsitemgroup.h
+    src/map/MapView3/MapView/mapgraphicsview3.cpp
+    src/map/MapView3/MapView/mapgraphicsview3.h
+    src/map/MapView3/mapview3widget.cpp
+    src/map/MapView3/mapview3widget.h
+    src/map/MapView3/mapview3widget.ui
+
+)
+
 set(MODULE_SOURCES
     ${mwsources}
     ${videosources}
@@ -158,6 +219,8 @@ set(MODULE_SOURCES
     ${desktopsources}
     ${sqosources}
     ${publicsources}
+    ${pffftsource}
+    ${mapsources}
 )
 
 if(WIN32 OR LINUX)
@@ -176,6 +239,11 @@ set(PROJECT_SOURCES
     homewidget.h
     homewidget.cpp
 
+    src/qwindowkit/windowkitwidget.h
+    src/qwindowkit/windowkitwidget.cpp
+    src/qwindowkit/witmainwindow.h
+    src/qwindowkit/witmainwindow.cpp
+
     ${TS_FILES}
     ${MODULE_SOURCES}
 )
@@ -184,6 +252,10 @@ qt_add_resources(APP_RESOURCES
     resources.qrc
     ${CMAKE_SOURCE_DIR}/resources/QtTheme/QtTheme.qrc
     ${CMAKE_SOURCE_DIR}/resources/MacOS/MacOS.qrc
+)
+qt_add_resources(APP_RESOURCES
+    ${CMAKE_SOURCE_DIR}/resources/widgetframe/shared.qrc
+    #${CMAKE_SOURCE_DIR}/module/qwindowkit-1.5.0/examples/shared/resources/shared.qrc
 )
 
 # QMessageLogContext 获取日志上下文信息，包含文件名、行号、函数名等信息。
@@ -291,6 +363,17 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
+# 是否不显示控制台窗口 WIN32_EXECUTABLE属性指定了是否为Windows应用程序生成一个控制台窗口。
+# 默认情况下，CMake会根据项目类型自动设置这个属性，但在某些情况下，你可能需要手动调整它以满足你的需求。
+if(WIN32)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE FALSE)
+    else()
+         set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
+    endif()
+    #set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE FALSE)
+endif()
+
 # 设置cmake模块的路径,存放上面函数的脚本名称为 enableWraning.txt，存放在cmake目录下：
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/")
 # 引入cmake的模块
@@ -320,25 +403,22 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::QuickControls2
     #Qt${QT_VERSION_MAJOR}::CorePrivate
     Qt${QT_VERSION_MAJOR}::SerialPort
+    Qt${QT_VERSION_MAJOR}::Positioning
+    Qt${QT_VERSION_MAJOR}::Location
+    Qt${QT_VERSION_MAJOR}::Concurrent
 )
 
-target_link_libraries(${PROJECT_NAME}
-    PUBLIC
-        log
-        plot
-        decodepublic
-        easyInput
-)
-# 是否不显示控制台窗口 WIN32_EXECUTABLE属性指定了是否为Windows应用程序生成一个控制台窗口。
-# 默认情况下，CMake会根据项目类型自动设置这个属性，但在某些情况下，你可能需要手动调整它以满足你的需求。
-if(WIN32)
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE OFF)
-    else()
-         set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE ON)
-    endif()
-    #set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE OFF)
-endif()
+# eigen (只有头文件的数学库)
+target_include_directories(${PROJECT_NAME} PRIVATE thirdparty/3rdparty/eigen)
+
+# signalsmith-stretch 一个用于音高和时间拉伸的 C++ 库 (只有头文件的库)
+target_include_directories(${PROJECT_NAME} PRIVATE thirdparty/3rdparty/signalsmith-stretch)
+
+# pffft
+target_include_directories(${PROJECT_NAME} PRIVATE thirdparty/3rdparty/pffft)
+
+# Google开发的开源3D空间 音频 SDK resonance-audio
+# add_subdirectory(thirdparty/3rdparty/resonance-audio)
 
 # opencv库
 set(OPENCVPATH D:/software/opencv/libs)
@@ -544,14 +624,6 @@ if(WIN32)
 #     endif()
  endif()
 
-if(WIN32)
-    target_link_libraries(${PROJECT_NAME}
-        PUBLIC
-            qbreakpads
-            #breakpads
-    )
-endif()
-
 # set_target_properties(${PROJECT_NAME} PROPERTIES
 #     # 检测栈内存溢出 -fsanitize=address
 #     # 关闭栈保护 -fno-stack-protector
@@ -601,4 +673,25 @@ add_subdirectory(module/easyInput)
 # add_subdirectory(module/Mqtt)
 if(WIN32)
     add_subdirectory(module/qbreakpad)
+endif()
+
+add_subdirectory(module/qwindowkit-1.5.0)
+
+add_subdirectory(module/qwindowkit-1.5.0/examples/shared/widgetframe)
+# qm_configure_target(${PROJECT_NAME}
+#     #QT_LINKS Widgets
+#     LINKS QWKCore QWKWidgets QWKQuick WidgetFrame
+# )
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    log
+    plot
+    decodepublic
+    easyInput
+    QWKCore QWKWidgets QWKQuick WidgetFrame
+)
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        qbreakpads
+        #breakpads
+    )
 endif()

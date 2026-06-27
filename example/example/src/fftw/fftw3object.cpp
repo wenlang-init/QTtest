@@ -1,6 +1,59 @@
 #include "fftw3object.h"
 #include <QtEndian>
 #include <QDebug>
+#include "pffft.h"
+
+// #include <signalsmith-stretch.h>
+// void esignalsmith_stretch_test() {
+//     // 配置预设
+//     // stretch.presetDefault(channels, sampleRate); // 使用默认预设
+//     // stretch.presetCheaper(channels, sampleRate); // 使用更经济的预设
+//     // 手动配置
+//     // stretch.configure(channels, blockSamples, intervalSamples);
+//     // 音高和时间拉伸设置
+//     // stretch.setTransposeFactor(2);     // 升高一个八度
+//     // stretch.setTransposeSemitones(12); // 升高一个八度
+//     // // 自定义频率映射
+//     // stretch.setFreqMap([](float inputFreq) {
+//     //     return inputFreq * 2;
+//     // });
+
+//     // /处理和重置
+//     // // 处理音频数据
+//     // stretch.process(inputBuffers, inputSamples, outputBuffers,
+//     // outputSamples);
+//     // 重置内部缓冲区
+//     // stretch.reset();
+
+//     signalsmith::stretch::SignalsmithStretch<float> stretch;
+
+//     stretch.presetDefault(2, 44100); // 配置为默认预设，2 个通道，44100 Hz 采样率
+//     // 处理音频数据
+//     float **inputBuffers, **outputBuffers;
+//     int     inputSamples = 1024, outputSamples = 1024;
+//     stretch.process(inputBuffers, inputSamples, outputBuffers,
+// outputSamples);
+// }
+
+// #include <Eigen/Core>
+// #include <iostream>
+// void eigentest() {
+//     // Eigen::Matrix <double, 2, 2> m;
+//     Eigen::MatrixXd m(2, 2);
+
+//     m(0, 0) = 3;
+//     m(1, 0) = 2.5;
+//     m(0, 1) = -1;
+//     m(1, 1) = m(1, 0) + m(0, 1);
+//     std::cout << m << std::endl;
+
+//     Eigen::MatrixXd m1 = Eigen::MatrixXd::Random(3, 3);
+//     m1 = (m1 + Eigen::MatrixXd::Constant(3, 3, 1.2)) * 50;
+//     std::cout << "m =" << std::endl << m1 << std::endl;
+//     Eigen::VectorXd v1(3);
+//     v1 << 1, 2, 3;
+//     std::cout << "m * v =" << std::endl << m1 * v1 << std::endl;
+// }
 
 fftw3Object::fftw3Object(QObject *parent)
     : QObject{parent}
@@ -9,6 +62,51 @@ fftw3Object::fftw3Object(QObject *parent)
 fftw3Object::~fftw3Object()
 {
     fftStreamSop();
+}
+
+int fftw3Object::fromPffft(const QVector<float>& sdata,
+                           QVector<float>      & fftdata,
+                           const size_t          N)
+{
+    float *work = nullptr;
+
+    if (N >= 2000) {
+        work = (float *)pffft_aligned_malloc(N *  sizeof(float));
+    }
+    PFFFT_Setup *setup = pffft_new_setup(N, PFFFT_REAL);
+    float *input = (float *)pffft_aligned_malloc(N *  sizeof(float));
+    float *output = (float *)pffft_aligned_malloc(N *  sizeof(float));
+
+    const size_t count = sdata.size() % N;
+    fftdata.resize(N, 0);
+
+    for (size_t i = 0; i < count; i++) {
+        for (size_t j = 0; j < N; j++) {
+            input[j] = sdata[i * count + j];
+        }
+
+        // fft:PFFFT_FORWARD;ifft:PFFFT_BACKWARD
+        pffft_transform_ordered(setup, input, output, work, PFFFT_FORWARD);
+
+        for (int j = 0; j < N; j++) {
+            fftdata[j] += output[j] / N;
+        }
+    }
+
+    if (count > 1) {
+        for (size_t i = 0; i < count; i++) {
+            fftdata[i] /= count;
+        }
+    }
+
+    pffft_destroy_setup(setup);
+
+    pffft_aligned_free(input);
+
+    pffft_aligned_free(output);
+
+    if (work) pffft_aligned_free(work);
+    return 0;
 }
 
 void fftw3Object::generateSignalData(QByteArray & data,

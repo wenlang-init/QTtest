@@ -10,5 +10,8 @@
         <file>src/souyin/edittxt.qml</file>
         <file>src/screen/imageFetcher.qml</file>
         <file>src/fftw/customplot.qml</file>
+        <file>src/map/qml/Main.qml</file>
+        <file>src/map/qml/PermissionsScreen.qml</file>
+        <file>src/map/qml/PlacesMap.qml</file>
     </qresource>
 </RCC>

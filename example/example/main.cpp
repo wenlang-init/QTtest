@@ -253,7 +253,10 @@ int main(int argc, char *argv[])
 
     // 强制使用软件OpenGL（适用于没有硬件加速的环境，但性能较差）
     // QCoreApplication::setAttribute(Qt::AA_UseSoftwareOpenGL);
-
+    // QGuiApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+    // Ensures that siblings of native widgets stay non-native unless
+    // specifically set by the Qt::WA_NativeWindow attribute.
+    QApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
     QApplication a(argc, argv);
 
     QtWebView::initialize();

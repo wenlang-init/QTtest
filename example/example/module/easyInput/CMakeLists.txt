@@ -15,11 +15,11 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     Core
 )
 
-if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
-        Core5Compat
-    )
-endif()
+# if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+#     find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
+#         Core5Compat
+#     )
+# endif()
 
 
 file(GLOB EASYINPUT_SOURCE CONFIGURE_DEPENDS
@@ -69,11 +69,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
 )
 
-if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        Qt6::Core5Compat
-    )
-endif()
+# if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+#     target_link_libraries(${PROJECT_NAME} PRIVATE
+#         Qt6::Core5Compat
+#     )
+# endif()
 
 # INTERFACE：表示该库是一个接口库
 target_include_directories(${PROJECT_NAME}
