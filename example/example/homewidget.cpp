@@ -28,6 +28,7 @@
 #include "src/map/MapView3/mapview3widget.h"
 #include "src/qwindowkit/windowkitwidget.h"
 #include "src/qwindowkit/witmainwindow.h"
+#include "src/screen/testwidgetgl.h"
 
 homewidget::homewidget(QWidget *parent)
 {
@@ -139,6 +140,9 @@ void homewidget::init()
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
     witem.name = "QWindowKitMainW";
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#ff9800.svg";
+    witem.name = "opengl测试";
     m_widgetList.append(witem);
 
     foreach(auto node, m_widgetList) {
@@ -273,6 +277,10 @@ void homewidget::showWidget(int index)
 
     case 18:
         w = new WitMainWindow;
+        break;
+
+    case 19:
+        w = new TestWidgetGL;
         break;
 
     default:

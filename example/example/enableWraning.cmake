@@ -41,3 +41,16 @@ function(target_set_warnings TARGET ENABLED ENABLED_AS_ERRORS)
     target_compile_options(${TARGET} PRIVATE ${WARNINGS})
     message(STATUS ${WARNINGS})
 endfunction(target_set_warnings)
+
+# 去掉字符串的前部分，然后输出到数组中。用于将文件夹下获取的文件去掉路径，只保留文件名
+function(target_get_filenames TARGETNAMES INPUTNAMES PATHNAME)
+    set(TEMP "")
+    foreach(path ${INPUTNAMES})
+        string(REPLACE
+            "${PATHNAME}" "" rel_path ${path}
+        )
+        set(TEMP "${TEMP} ${rel_path}")
+    endforeach()
+    set(${TARGETNAMES} ${TEMP} PARENT_SCOPE)
+endfunction(target_get_filenames)
+

@@ -41,6 +41,8 @@ unix{
 #include(qmqtt/qmqtt.pri)
 #include(mqttc/mqttc.pri)
 
+USEXCOPY = true
+
 win32 {
     INCLUDEPATH += $$PWD/ffmpeg/windows/include
     LIBS += -L$$PWD/ffmpeg/windows/lib -lavformat -lavcodec -lavutil -lswscale -lswresample -lavfilter -lavdevice
@@ -51,10 +53,14 @@ win32 {
     } else {
         DESTUIDIR = $$DESTDIRBASE/release
     }
-    QMAKE_POST_LINK += xcopy /E/Y/H/C/I $$replace(SRCUIDIR,/,\\) $$replace(DESTUIDIR,/,\\)
+
+    equals(USEXCOPY,"true"){
+        QMAKE_POST_LINK += xcopy /E/Y/H/C/I \"$$replace(SRCUIDIR,/,\\)\" \"$$replace(DESTUIDIR,/,\\)\"
+    } else {
+        QMAKE_POST_LINK += cp -v \"$$SRCUIDIR\" \"$$DESTUIDIR\" ;
+    }
     #QMAKE_POST_LINK += copy /Y $$replace(libsrcpath,/,\\) $$replace(libdespath,/,\\)
 }
-
 
 win32 {
     INCLUDEPATH += $$PWD/qmqtt/include
@@ -80,7 +86,11 @@ win32 {
             DESTUIDIR=$$DESTDIRBASE/release
         }
     }
-    QMAKE_POST_LINK += & xcopy /E/Y/H/C/I $$replace(SRCUIDIR,/,\\) $$replace(DESTUIDIR,/,\\)
+    equals(USEXCOPY,"true"){
+        QMAKE_POST_LINK += & xcopy /E/Y/H/C/I \"$$replace(SRCUIDIR,/,\\)\" \"$$replace(DESTUIDIR,/,\\)\"
+    } else {
+        QMAKE_POST_LINK += cp -v \"$$SRCUIDIR\" \"$$DESTUIDIR\" ;
+    }
 }
 message($$QMAKE_POST_LINK)
 # You can make your code fail to compile if it uses deprecated APIs.

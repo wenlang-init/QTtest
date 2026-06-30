@@ -199,10 +199,18 @@ Rectangle {
                 WebView {
                     id: webView
                     anchors.fill: parent
-                    url: "https://www.baidu.com/"
+                    // settings {
+                    //     // 允许 WebView 本身加载 file:// URL
+                    //     allowFileAccess: true
+                    //     // 允许本地加载的文档访问其他本地 URL
+                    //     localContentCanAccessFileUrls: true
+                    // }
+                    // url: "https://www.baidu.com/"
+                    url: "file:///D:/mapdownload/高德/index.html"
                     Component.onCompleted: {
                         console.log("xxxxxxxxx");
                         //webView.loadHtml("<h1>Hello, Qt WebView!</h1>", "https://example.com")
+                        //webView.loadHtml("", "file:///D:/mapdownload/高德/index1.html")
                     }
                     onLoadingChanged: {
                         console.log("Loading progress:", webView.loadProgress)

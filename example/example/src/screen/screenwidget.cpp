@@ -279,25 +279,32 @@ void screenWidget::changeWindow(void *phwnd)
 
     m_rect = QRect(0, 0, width, height);
 
-    if (hwnd) {
-        m_rect = FuncHelper::getInstance().getRectNoBorderFromHwnd(hwnd);
-        qDebug() << hwnd
+    QRect _rect;
+
+    // _rect = FuncHelper::getInstance().getRectNoBorderFromHwnd(hwnd);
+    _rect = FuncHelper::getInstance().getRectFromHwnd(hwnd);
+
+    if (!_rect.isNull()) {
+        m_rect = _rect;
+        qDebug() << hwnd << m_rect
                  << FuncHelper::getInstance().getWindowProcessID(hwnd)
                  << FuncHelper::getInstance().getWindowClass(hwnd)
                  << FuncHelper::getInstance().getWindowName(hwnd)
                  << FuncHelper::getInstance().getWindowFilePathName(hwnd);
-# ifdef USE_QTSCREEN
+        # ifdef USE_QTSCREEN
 
-        // double zoom = QGuiApplication::primaryScreen()->devicePixelRatio();
+        // double zoom =
+        // QGuiApplication::primaryScreen()->devicePixelRatio();
         double zoom = FuncHelper::getInstance().getSystemZoom();
         int    w = m_rect.width() / zoom;
         int    h = m_rect.height() / zoom;
         int    x = m_rect.x() / zoom;
         int    y = m_rect.y() / zoom;
         m_rect = QRect(x, y, w, h);
-# endif // ifdef USE_QTSCREEN
+        # endif // ifdef USE_QTSCREEN
+    } else {
+        qDebug() << hwnd << m_rect;
     }
-    qDebug() << hwnd << m_rect;
 
 # if defined(USE_FFMPEG)
     ffmpegScreen::instance().stopwork();

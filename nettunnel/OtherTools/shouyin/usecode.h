@@ -13,14 +13,14 @@ public:
                        unsigned char enkey);
 
     QByteArray getDecode(QByteArray sdata);
-#if !defined(Q_OS_ANDROID)
+#if 0 // defined(Q_OS_WINDOWS)
     QByteArray GzipCompress(QByteArray postBody);
     QByteArray GZipUnCompress(QByteArray src);
     bool       GzipCompress(const QString& srcFilename,
                             const QString& destFilename);
     bool       GZipUnCompress(const QString& srcFilename,
                               const QString& destFilename);
-#endif // if !defined(Q_OS_ANDROID)
+#endif // if defined(Q_OS_WINDOWS)
 
 signals:
 };

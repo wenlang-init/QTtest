@@ -1,0 +1,97 @@
+#ifndef CONTINUOUSSCREENCAPTURE_H
+#define CONTINUOUSSCREENCAPTURE_H
+
+#include <QObject>
+#include <QImage>
+#include <QAtomicInt>
+#include <QThread>
+#include <d3d11.h>
+#include <dxgi1_2.h>
+
+struct PointerData {
+    QImage image;
+    int    hotX;
+    int    hotY;
+};
+
+class ContinuousScreenCapture : public QObject {
+    Q_OBJECT
+
+public:
+
+    // explicit ContinuousScreenCapture(HWND     hWnd,
+    //                                  QObject *parent = nullptr);
+
+    explicit ContinuousScreenCapture(HWND hWnd);
+
+    ~ContinuousScreenCapture();
+
+    void start(); // 开始连续捕获
+    void stop();  // 停止捕获（阻塞等待线程结束）
+
+signals:
+
+    void frameCaptured(const QImage& image); // 每帧捕获完成时发送
+
+private:
+
+    bool init();
+
+public:
+
+    // 调整视图,以保证在视窗RECT(minX,minY,maxX,maxY)内
+    void getViewFinder(int& left, int& top, int& width, int& height,
+                       int  minX, int  minY, int  maxX, int  maxY) {
+        if (minX > maxX) return;
+
+        if (minY > maxY) return;
+
+        int right = width + left;
+        int bottom = height + top;
+
+        if ((right > minX) && (left < maxX)) {
+            if (right > maxX) {
+                width -= (right - maxX);
+            }
+
+            if (left < minX) {
+                width -= (minX - left);
+                left = minX;
+            }
+        } else {
+            left = 0;
+            width = 0;
+        }
+
+        if ((bottom > minY) && (top < maxY)) {
+            if (bottom > maxY) {
+                height -= (bottom - maxY);
+            }
+
+            if (top < minY) {
+                height -= (minY - top);
+                top = minY;
+            }
+        } else {
+            top = 0;
+            height = 0;
+        }
+    }
+
+private:
+
+    void        captureLoop(); // 循环体（在单独线程中运行）
+    PointerData getPointerShape(const DXGI_OUTDUPL_FRAME_INFO& frameInfo);
+
+    HWND m_hWnd;
+    QAtomicInt m_running; // 控制循环标志
+
+    // DXGI 资源（在构造时初始化，整个生命周期复用）
+    ID3D11Device *m_pDevice;
+    ID3D11DeviceContext *m_pContext;
+    IDXGIOutputDuplication *m_pDuplication;
+
+    QThread m_workerThread; // 用于运行循环的工作线程
+};
+
+#endif // CONTINUUSSCREENCAPTURE_H

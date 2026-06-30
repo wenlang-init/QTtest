@@ -4,7 +4,7 @@
 #include <QDebug>
 #include <QFile>
 #include <QTime>
-#if defined(Q_OS_WINDOWS)
+#if 0 // defined(Q_OS_WINDOWS)
 # include <QtZlib/zlib.h>
 #endif // if defined(Q_OS_WINDOWS)
 #define qdebug qDebug().noquote() << __FILE__ << __LINE__ << __FUNCTION__
@@ -178,7 +178,7 @@ QByteArray useCode::getDecode(QByteArray sdata)
     return encdata;
 }
 
-#if defined(Q_OS_WINDOWS)
+#if 0 // defined(Q_OS_WINDOWS)
 static const int BufferSize = 1024 * 4;
 QByteArray useCode::GzipCompress(QByteArray postBody)
 {

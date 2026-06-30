@@ -17,6 +17,34 @@ public:
     void               getFileHashSig(QString filePath,
                                       int     hash);
 
+    // 现代 CPU 的 sqrtss / rsqrtss 指令（SSE）已经非常快，且精度更高，
+    // 因此在大多数场景下，直接使用标准库函数是最佳选择
+    // 快速逆平方根 1/sqrt(x) , number为非负数
+    static float Q_rsqrt(float number) {
+        uint32_t i;
+        float    x2, y;
+        const float threehalfs = 1.5F;
+
+        x2 = number * 0.5F;
+        y = number;
+
+        // IEEE 754浮点数标准 , 对数近似值
+        i = *(uint32_t  *)&y;
+
+        // double : 0x5fe6eb50c7b537a9
+        // float : 0x5f3759df
+        i = 0x5f3759df - (i >> 1);
+        y = *(float *)&i;
+
+        // 使用牛顿-拉弗森方法（y = y*(1.5 - 0.5*x*y*y)）
+        // 迭代一次即可获得相当高的精度（相对误差约 0.17%），
+        // 迭代两次可达到约 1‰ 的精度
+        y = y * (threehalfs - (x2 * y * y)); // 1st iteration
+        // y  = y * (threehalfs - (x2 * y * y)); // 2nd iteration, can be
+        // removed
+        return y;
+    }
+
 protected:
 
     explicit FuncHelper(QObject *parent = nullptr);
@@ -106,11 +134,13 @@ public:
     double                       getSystemPixZoom();
 
     // 获取wind的窗口到image
-    bool                         getScreenImage(HWND    wind,
-                                                QImage& image,
-                                                bool    hasBorder = true);
-    bool                         getWindowScreenImageFromDXGI(QImage     & image,
-                                                              const QRect& rect);
+
+    bool   getScreenImage(HWND    wind,
+                          QImage& image,
+                          bool    hasBorder = true);
+    QImage getWindowScreenImageFromDXGI(HWND hWnd);
+    bool   getWindowScreenImageFromDXGI(QImage     & image,
+                                        const QRect& rect);
 #endif // if defined(Q_OS_WINDOWS)
 
 #if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)

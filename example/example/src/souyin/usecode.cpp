@@ -4,10 +4,10 @@
 #include <QDebug>
 #include <QFile>
 #include <QTime>
-#if defined(Q_OS_WIN)
+#if 0 // defined(Q_OS_WIN)
 # include <QtZlib/zlib.h>
 #endif // if defined(Q_OS_WIN)
-#define qdebug qDebug().noquote() << __FILE__ << __LINE__ << __FUNCTION__
+#define qdebug qDebug().noquote()
 
 #define KEYCORE 0XC2
 
@@ -178,7 +178,7 @@ QByteArray useCode::getDecode(QByteArray sdata)
     return encdata;
 }
 
-#if defined(Q_OS_WIN)
+#if 0 // defined(Q_OS_WIN)
 static const int BufferSize = 1024 * 4;
 QByteArray useCode::GzipCompress(QByteArray postBody)
 {

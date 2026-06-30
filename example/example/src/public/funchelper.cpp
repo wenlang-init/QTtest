@@ -703,9 +703,250 @@ bool FuncHelper::getScreenImage(HWND wind, QImage& image, bool hasBorder)
 ////////////DXGI截屏/////////////////
 # include <d3d11.h>
 # include <dxgi1_2.h>
+# include <comdef.h> // 用于 COM 错误处理
 # pragma comment(lib, "d3d11.lib")
 # pragma comment(lib, "dxgi.lib")
 # pragma comment(lib, "User32.lib")
+
+
+/**
+ * 截取指定窗口并保存为 QImage
+ * @param hWnd 目标窗口句柄
+ * @return 截取到的 QImage，失败则返回空 QImage
+ */
+QImage FuncHelper::getWindowScreenImageFromDXGI(HWND hWnd)
+{
+    HRESULT hr = S_OK;
+    ID3D11Device *pDevice = nullptr;
+    ID3D11DeviceContext *pContext = nullptr;
+    IDXGIOutputDuplication *pDuplication = nullptr;
+
+    // 1. 初始化 D3D11 设备和上下文
+    hr = D3D11CreateDevice(
+        nullptr,
+        D3D_DRIVER_TYPE_HARDWARE,
+        nullptr,
+        0,
+        nullptr,
+        0,
+        D3D11_SDK_VERSION,
+        &pDevice,
+        nullptr,
+        &pContext
+        );
+
+    if (FAILED(hr)) {
+        qDebug() << "D3D11CreateDevice failed:" << hr;
+        return QImage();
+    }
+
+    // 2. 获取 DXGI 设备
+    IDXGIDevice *pDxgiDevice = nullptr;
+    hr = pDevice->QueryInterface(__uuidof(IDXGIDevice), (void **)&pDxgiDevice);
+
+    if (FAILED(hr)) {
+        qDebug() << "QueryInterface for IDXGIDevice failed:" << hr;
+        pDevice->Release();
+        pContext->Release();
+        return QImage();
+    }
+
+    // 3. 获取 DXGI 适配器（显卡）
+    IDXGIAdapter *pAdapter = nullptr;
+    hr = pDxgiDevice->GetParent(__uuidof(IDXGIAdapter), (void **)&pAdapter);
+    pDxgiDevice->Release();
+
+    if (FAILED(hr)) {
+        qDebug() << "GetParent for IDXGIAdapter failed:" << hr;
+        pDevice->Release();
+        pContext->Release();
+        return QImage();
+    }
+
+    // 4. 获取主显示器输出
+    IDXGIOutput *pOutput = nullptr;
+    hr = pAdapter->EnumOutputs(0, &pOutput);
+    pAdapter->Release();
+
+    if (FAILED(hr)) {
+        qDebug() << "EnumOutputs failed:" << hr;
+        pDevice->Release();
+        pContext->Release();
+        return QImage();
+    }
+
+    // 5. 获取 IDXGIOutput1 接口
+    IDXGIOutput1 *pOutput1 = nullptr;
+    hr = pOutput->QueryInterface(__uuidof(IDXGIOutput1), (void **)&pOutput1);
+    pOutput->Release();
+
+    if (FAILED(hr)) {
+        qDebug() << "QueryInterface for IDXGIOutput1 failed:" << hr;
+        pDevice->Release();
+        pContext->Release();
+        return QImage();
+    }
+
+    // 6. 创建桌面复制对象
+    hr = pOutput1->DuplicateOutput(pDevice, &pDuplication);
+    pOutput1->Release();
+
+    if (FAILED(hr)) {
+        qDebug() << "DuplicateOutput failed:" << hr;
+        pDevice->Release();
+        pContext->Release();
+        return QImage();
+    }
+
+    // 7. 获取目标窗口的位置和尺寸
+    RECT windowRect;
+    int  left = 0;
+    int  top = 0;
+    int  width = GetSystemMetrics(SM_CXSCREEN);
+    int  height = GetSystemMetrics(SM_CYSCREEN);
+
+    if (!GetWindowRect(hWnd, &windowRect)) {
+        // qDebug() << "GetWindowRect failed";
+        // pDuplication->Release();
+        // pDevice->Release();
+        // pContext->Release();
+        // return QImage();
+    } else {
+        left = windowRect.left;
+        top = windowRect.top;
+        width = windowRect.right - windowRect.left;
+        height = windowRect.bottom - windowRect.top;
+    }
+
+    // 如果窗口大小为 0 或负值，则返回空
+    if ((width <= 0) || (height <= 0)) {
+        qDebug() << "Invalid window size";
+        pDuplication->Release();
+        pDevice->Release();
+        pContext->Release();
+        return QImage();
+    }
+
+    // 8. 捕获一帧桌面图像
+    IDXGIResource *pDesktopResource = nullptr;
+    DXGI_OUTDUPL_FRAME_INFO frameInfo;
+    hr = pDuplication->AcquireNextFrame(500, &frameInfo, &pDesktopResource);
+
+    if (hr == DXGI_ERROR_WAIT_TIMEOUT) {
+        qDebug() << "AcquireNextFrame timeout";
+        pDuplication->ReleaseFrame();
+        pDuplication->Release();
+        pDevice->Release();
+        pContext->Release();
+        return QImage();
+    }
+
+    if (FAILED(hr)) {
+        qDebug() << "AcquireNextFrame failed:" << hr;
+        pDuplication->ReleaseFrame();
+        pDuplication->Release();
+        pDevice->Release();
+        pContext->Release();
+        return QImage();
+    }
+
+    // 9. 从资源获取纹理
+    ID3D11Texture2D *pDesktopTexture = nullptr;
+    hr = pDesktopResource->QueryInterface(__uuidof(ID3D11Texture2D),
+                                          (void **)&pDesktopTexture);
+    pDesktopResource->Release();
+
+    if (FAILED(hr)) {
+        qDebug() << "QueryInterface for ID3D11Texture2D failed:" << hr;
+        pDuplication->ReleaseFrame();
+        pDuplication->Release();
+        pDevice->Release();
+        pContext->Release();
+        return QImage();
+    }
+
+    // 10. 获取桌面纹理描述
+    D3D11_TEXTURE2D_DESC desc;
+    pDesktopTexture->GetDesc(&desc);
+
+    // 11. 创建用于 CPU 读取的 Staging 纹理
+    D3D11_TEXTURE2D_DESC stagingDesc = desc;
+    stagingDesc.Usage = D3D11_USAGE_STAGING;
+    stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    stagingDesc.BindFlags = 0;
+    stagingDesc.MiscFlags = 0;
+
+    ID3D11Texture2D *pStagingTexture = nullptr;
+    hr = pDevice->CreateTexture2D(&stagingDesc, nullptr, &pStagingTexture);
+
+    if (FAILED(hr)) {
+        qDebug() << "CreateTexture2D for staging failed:" << hr;
+        pDesktopTexture->Release();
+        pDuplication->ReleaseFrame();
+        pDuplication->Release();
+        pDevice->Release();
+        pContext->Release();
+        return QImage();
+    }
+
+    // 12. 将桌面纹理拷贝到 Staging 纹理
+    pContext->CopyResource(pStagingTexture, pDesktopTexture);
+    pDesktopTexture->Release();
+
+    // 13. 映射 Staging 纹理以读取像素数据
+    D3D11_MAPPED_SUBRESOURCE mapped;
+    hr = pContext->Map(pStagingTexture, 0, D3D11_MAP_READ, 0, &mapped);
+
+    if (FAILED(hr)) {
+        qDebug() << "Map failed:" << hr;
+        pStagingTexture->Release();
+        pDuplication->ReleaseFrame();
+        pDuplication->Release();
+        pDevice->Release();
+        pContext->Release();
+        return QImage();
+    }
+
+    // 14. 从映射的数据中裁剪出窗口区域
+    // 桌面数据格式为 DXGI_FORMAT_B8G8R8A8_UNORM (32位 BGRA)[reference:4][reference:5]
+    const int bytesPerPixel = 4;
+    QImage    result(width, height, QImage::Format_ARGB32);
+
+    // mapped.RowPitch 是桌面图像的每行字节数（含填充）
+    // 从桌面数据中提取窗口区域
+    for (int y = 0; y < height; ++y) {
+        // 计算窗口区域在桌面数据中的起始地址
+        const quint8 *srcRow = static_cast<const quint8 *>(mapped.pData) +
+                               (top + y) * mapped.RowPitch +
+                               left * bytesPerPixel;
+
+        // 获取 QImage 当前行的写入指针
+        quint8 *dstRow = result.scanLine(y);
+
+        // 复制一行像素数据（BGRA -> ARGB 转换）
+        for (int x = 0; x < width; ++x) {
+            const quint8 *srcPixel = srcRow + x * bytesPerPixel;
+            quint8 *dstPixel = dstRow + x * bytesPerPixel;
+
+            // BGRA 转换为 ARGB (Qt 使用 ARGB32 格式)
+            dstPixel[0] = srcPixel[2]; // R
+            dstPixel[1] = srcPixel[1]; // G
+            dstPixel[2] = srcPixel[0]; // B
+            dstPixel[3] = srcPixel[3]; // A
+        }
+    }
+
+    // 15. 清理资源
+    pContext->Unmap(pStagingTexture, 0);
+    pStagingTexture->Release();
+    pDuplication->ReleaseFrame();
+    pDuplication->Release();
+    pDevice->Release();
+    pContext->Release();
+
+    return result;
+}
+
 bool FuncHelper::getWindowScreenImageFromDXGI(QImage& image, const QRect& rect)
 {
     // 支持的驱动程序类型

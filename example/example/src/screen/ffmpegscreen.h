@@ -25,6 +25,7 @@ public:
         return instance;
     }
 
+    explicit ffmpegScreen(QObject *parent = nullptr);
     void info();
     virtual ~ffmpegScreen();
 
@@ -64,7 +65,6 @@ signals:
 
 private:
 
-    explicit ffmpegScreen(QObject *parent = nullptr);
     bool init();
 
     AVFormatContext *m_formatContext = nullptr;

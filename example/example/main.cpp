@@ -428,7 +428,7 @@ int main(int argc, char *argv[])
         });
     }
 
-    paddletest();
+    // paddletest();
 
     int ret = a.exec();
 

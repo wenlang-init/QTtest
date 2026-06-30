@@ -134,13 +134,7 @@ private:
 #define CUSTOMMSGHANDLER_LOG_CXX                                               \
     [] (QtMsgType type, const QMessageLogContext& context, const QString& msg) \
     {                                                                          \
-        QString tempMsg;                                                       \
-        if (context.file &&                                                    \
-            QString::fromStdString(context.file).contains("qrc:/"))            \
-        {                                                                      \
-            tempMsg += "qmlLog ";                                              \
-        }                                                                      \
-        tempMsg += msg + "\n";                                                 \
+        const QString& tempMsg = msg + "\n";                                   \
         switch (type)                                                          \
         {                                                                      \
         case QtDebugMsg:                                                       \

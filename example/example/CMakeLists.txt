@@ -9,7 +9,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools)
+find_package(QT NAMES Qt6 REQUIRED COMPONENTS)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     Widgets LinguistTools Core Sql Quick
     Multimedia
@@ -19,7 +19,8 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     WebView
     Network
     Charts
-    #OpenGL
+    Gui
+    OpenGL
     OpenGLWidgets
     #Qml
     QuickControls2
@@ -135,6 +136,9 @@ if(WIN32)
         ${publicsources}
         src/public/dxgigetscreen.cpp
         src/public/dxgigetscreen.h
+
+        src/public/continuousscreencapture.h
+        src/public/continuousscreencapture.cpp
     )
 endif()
 
@@ -148,6 +152,15 @@ set(screensources
     src/screen/qmlwidgetloader.cpp
     src/screen/qmlwidgetloader.h
     #src/screen/imageFetcher.qml
+
+    # opengl image 窗口
+    src/screen/glimagewindow.cpp
+    src/screen/glimagewidget.h
+    src/screen/glimagewidget.cpp
+    src/screen/glimagewindow.h
+
+    src/screen/testwidgetgl.h
+    src/screen/testwidgetgl.cpp
 )
 
 # pffft
@@ -205,7 +218,6 @@ set(mapsources
     src/map/MapView3/mapview3widget.cpp
     src/map/MapView3/mapview3widget.h
     src/map/MapView3/mapview3widget.ui
-
 )
 
 set(MODULE_SOURCES
@@ -397,7 +409,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::WebView
     Qt${QT_VERSION_MAJOR}::Network
     Qt${QT_VERSION_MAJOR}::Charts
-    #Qt${QT_VERSION_MAJOR}::OpenGL
+    Qt${QT_VERSION_MAJOR}::Gui
+    Qt${QT_VERSION_MAJOR}::OpenGL
     Qt${QT_VERSION_MAJOR}::OpenGLWidgets
     #Qt${QT_VERSION_MAJOR}::Qml
     Qt${QT_VERSION_MAJOR}::QuickControls2
@@ -407,6 +420,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::Location
     Qt${QT_VERSION_MAJOR}::Concurrent
 )
+
+# set_target_properties(${PROJECT_NAME} PROPERTIES
+#     COMPILE_FLAGS "-lopengl32 -lglu32 -lEGL"
+#     LINK_FLAGS "-lopengl32 -lglu32 -lEGL"
+# )
 
 # eigen (只有头文件的数学库)
 target_include_directories(${PROJECT_NAME} PRIVATE thirdparty/3rdparty/eigen)
@@ -449,15 +467,17 @@ if(WIN32)
             # CMAKE_PREFIX_PATH 是一个全局变量，find_package 会在这个路径列表中搜索 <package>Config.cmake
             #list(APPEND CMAKE_PREFIX_PATH ${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64)
 
+            set(OPENCVPATH_BASE ${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64)
             # 告诉 CMake 我们想要静态链接 OpenCV
             set(OpenCV_STATIC ON)
             find_package(OpenCV REQUIRED
-                HINTS ${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64
+                HINTS ${OPENCVPATH_BASE}
                 # 或者使用 PATHS，但 HINTS 优先级更高
                 NO_DEFAULT_PATH   # 如果加上，则完全忽略默认路径
+                #core imgproc
             )
             target_include_directories(${PROJECT_NAME} PRIVATE ${OpenCV_INCLUDE_DIRS})
-            target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS})
+            target_link_libraries(${PROJECT_NAME} PRIVATE)
         else()
             target_include_directories(${PROJECT_NAME} PRIVATE
                 #${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64/include
@@ -467,6 +487,16 @@ if(WIN32)
                 #${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64/x64/mingw/staticlib
                 ${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64-shared/x64/mingw/lib
             )
+
+            # file(GLOB OPENCVALLLIBS
+            #     ${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64/x64/mingw/staticlib/*.a
+            # )
+            # # target_get_filenames(REL_OPENCVALLLIBS
+            # #     "${OPENCVALLLIBS}"
+            # #     "${OPENCVPATH}/OpenCV-MinGW-x64-5.0.0/llvmmingw64/x64/mingw/staticlib/"
+            # # )
+            # target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENCVALLLIBS})
+
             target_link_libraries(${PROJECT_NAME} PRIVATE
                 opencv_core500
                 opencv_imgproc500
