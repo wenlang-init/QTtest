@@ -19,15 +19,36 @@ class ContinuousScreenCapture : public QObject {
 
 public:
 
-    // explicit ContinuousScreenCapture(HWND     hWnd,
+    // explicit ContinuousScreenCapture(HWND     hWnd=nullptr,
     //                                  QObject *parent = nullptr);
 
-    explicit ContinuousScreenCapture(HWND hWnd);
+    explicit ContinuousScreenCapture(HWND hWnd = nullptr);
 
     ~ContinuousScreenCapture();
 
     void start(); // 开始连续捕获
     void stop();  // 停止捕获（阻塞等待线程结束）
+
+    void setScreenSize(int x,
+                       int y,
+                       int width,
+                       int height) {
+        m_x = x;
+        m_y = y;
+        m_width = width;
+        m_height = height;
+
+        m_hWnd = nullptr;
+    }
+
+    void setHwnd(HWND hwnd) {
+        m_hWnd = hwnd;
+
+        m_x = 0;
+        m_y = 0;
+        m_width = GetSystemMetrics(SM_CXSCREEN);
+        m_height = GetSystemMetrics(SM_CYSCREEN);
+    }
 
 signals:
 
@@ -83,8 +104,7 @@ private:
     void        captureLoop(); // 循环体（在单独线程中运行）
     PointerData getPointerShape(const DXGI_OUTDUPL_FRAME_INFO& frameInfo);
 
-    HWND m_hWnd;
-    QAtomicInt m_running; // 控制循环标志
+    QAtomicInt m_running;      // 控制循环标志
 
     // DXGI 资源（在构造时初始化，整个生命周期复用）
     ID3D11Device *m_pDevice;
@@ -92,6 +112,9 @@ private:
     IDXGIOutputDuplication *m_pDuplication;
 
     QThread m_workerThread; // 用于运行循环的工作线程
+
+    int m_x, m_y, m_width, m_height;
+    HWND m_hWnd;
 };
 
 #endif // CONTINUUSSCREENCAPTURE_H

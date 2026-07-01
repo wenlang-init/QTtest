@@ -12,6 +12,8 @@
 #include <windows.h>
 #include <src/public/dxgigetscreen.h>
 #include <src/public/continuousscreencapture.h>
+#include "regionselector.h"
+#include "freehandselector.h"
 
 // #define USEDOPENGLWINDOW
 
@@ -26,16 +28,28 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
     m_glImageWidget->setDisplayMode(GLImageWidget::Fit);
     QComboBox   *combox = new QComboBox(this);
     QPushButton *pushbotton = new QPushButton(this);
+    QPushButton *pushbottonrect = new QPushButton(this);
+    QPushButton *pushbottonscreen = new QPushButton(this);
     QCheckBox   *checkbox = new QCheckBox(this);
+    labelfps = new QLabel(this);
     checkbox->setText("使用DXGI");
     pushbotton->setText("刷新");
+    pushbottonrect->setText("选择区域");
+    pushbottonscreen->setText("选择任意区域");
+    labelfps->setMaximumHeight(30);
+    labelfps->adjustSize();
     QLabel *label = new QLabel(this);
     label->setMaximumHeight(80);
+    label->setWordWrap(true); // 自动换行
+    label->adjustSize();      // 自适应大小
     QHBoxLayout *hlayout = new QHBoxLayout;
     hlayout->setContentsMargins(0, 0, 0, 0);
     hlayout->addWidget(combox);
     hlayout->addWidget(pushbotton);
+    hlayout->addWidget(pushbottonrect);
+    hlayout->addWidget(pushbottonscreen);
     hlayout->addWidget(checkbox);
+    hlayout->addWidget(labelfps);
 
     QVBoxLayout *vlayout = new QVBoxLayout(this);
     vlayout->setContentsMargins(0, 0, 0, 0);
@@ -77,6 +91,57 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
         }
         combox->setCurrentIndex(0);
     });
+
+    connect(pushbottonrect, &QPushButton::clicked, this, [ = ]() {
+        RegionSelector selector;
+        QRect m_rect = selector.selectRegion();
+        qreal scaleFactor = QGuiApplication::primaryScreen()->devicePixelRatio();
+        m_rect.setRect(m_rect.x() * scaleFactor,
+                       m_rect.y() * scaleFactor,
+                       m_rect.width() * scaleFactor,
+                       m_rect.height() * scaleFactor
+                       );
+
+        qDebug() << m_rect;
+        m_isPath = false;
+
+        if (!checkbox->isChecked()) {
+            loaderImageFFmpeg(m_rect);
+        } else {
+            loaderImageDXGI(m_rect, nullptr, false);
+        }
+    });
+
+    connect(pushbottonscreen, &QPushButton::clicked, this, [ = ]() {
+        if (0) {
+            FreehandSelector fselector;
+            QImage image = fselector.selectShapeScreen();
+            emit loadImage(image);
+            return;
+        }
+
+
+        FreehandSelector fselector;
+        m_path = fselector.selectShape();
+        QRect m_rect = m_path.boundingRect().toRect();
+
+        qreal scaleFactor = QGuiApplication::primaryScreen()->devicePixelRatio();
+        m_rect.setRect(m_rect.x() * scaleFactor,
+                       m_rect.y() * scaleFactor,
+                       m_rect.width() * scaleFactor,
+                       m_rect.height() * scaleFactor
+                       );
+
+        qDebug() << m_rect;
+        m_isPath = true;
+
+        if (!checkbox->isChecked()) {
+            loaderImageFFmpeg(m_rect);
+        } else {
+            loaderImageDXGI(m_rect, nullptr, false);
+        }
+    });
+
 
     connect(combox, &QComboBox::currentIndexChanged, this, [ = ](int index) {
         if (index < 0) return;
@@ -130,80 +195,16 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
             label->clear();
         }
 
+        m_isPath = false;
+
         if (!checkbox->isChecked()) {
-            int x, y, w, h;
-            w = m_rect.width();
-            h = m_rect.height();
-            x = m_rect.x();
-            y = m_rect.y();
-
-            if (w < 1) w = 1;
-
-            if (w > width) w = width;
-
-            if (h < 1) h = 1;
-
-            if (h > height) h = height;
-
-            if (x < 0) x = 0;
-
-            if (x > width - 1) x = width - 1;
-
-            if (y < 0) y = 0;
-
-            if (y > height - 1) y = height - 1;
-
-            if (m_ffmscreen) {
-                delete m_ffmscreen;
-                m_ffmscreen = nullptr;
-            }
-
-            // QString hwndstr = "hwnd=" + QString::number((quintptr)hwnd, 10);
-
-            m_ffmscreen = new ffmpegScreen;
-            m_ffmscreen->initparam("desktop",
-                                   "25",
-                                   QString::number(x),
-                                   QString::number(y),
-                                   QString("%1x%2").arg(w).arg(h)
-                                   );
-            connect(m_ffmscreen, &ffmpegScreen::gotFrame, this,
-                    [ = ](QImage image) {
-                setImageInfo(image);
-                emit loadImage(image);
-
-                //         m_glImageWidget->loadImage(image);
-                // # ifdef USEDOPENGLWINDOW
-                //         m_glImageWindow->loadImage(image);
-                // # endif // ifdef USEDOPENGLWINDOW
-                // update();
-            });
-            m_ffmscreen->startwork();
+            loaderImageFFmpeg(m_rect);
         } else {
-            if (m_capturer) {
-                delete m_capturer;
-                m_capturer = nullptr;
-            }
-            m_capturer = new ContinuousScreenCapture(hwnd);
-
-            // 连接信号，处理每帧图像
-            connect(m_capturer, &ContinuousScreenCapture::frameCaptured,
-                    this, [this](const QImage& img) {
-                QImage image = img;
-                setImageInfo(image);
-                emit loadImage(image);
-
-                //         m_glImageWidget->loadImage(image);
-                // # ifdef USEDOPENGLWINDOW
-                //         m_glImageWindow->loadImage(image);
-                // # endif // ifdef USEDOPENGLWINDOW
-
-                // update();
-            });
-            m_capturer->start(); // 开始连续捕获
+            loaderImageDXGI(QRect(),
+                            hwnd,
+                            true);
         }
     });
-
 
 #ifdef USEDOPENGLWINDOW
     m_glImageWindow = new GLImageWindow;
@@ -233,6 +234,98 @@ TestWidgetGL::~TestWidgetGL()
     if (m_glImageWindow) delete m_glImageWindow;
 }
 
+void TestWidgetGL::loaderImageFFmpeg(const QRect& m_rect)
+{
+    int width = 1920, height = 1200;
+
+    width = QGuiApplication::primaryScreen()->geometry().width();
+    height = QGuiApplication::primaryScreen()->geometry().height();
+    width *= QGuiApplication::primaryScreen()->devicePixelRatio();
+    height *= QGuiApplication::primaryScreen()->devicePixelRatio();
+
+    int x, y, w, h;
+    w = m_rect.width();
+    h = m_rect.height();
+    x = m_rect.x();
+    y = m_rect.y();
+
+    if (w < 1) w = 1;
+
+    if (w > width) w = width;
+
+    if (h < 1) h = 1;
+
+    if (h > height) h = height;
+
+    if (x < 0) x = 0;
+
+    if (x > width - 1) x = width - 1;
+
+    if (y < 0) y = 0;
+
+    if (y > height - 1) y = height - 1;
+
+    if (m_ffmscreen) {
+        delete m_ffmscreen;
+        m_ffmscreen = nullptr;
+    }
+
+    if (!m_ffmscreen) {
+        m_ffmscreen = new ffmpegScreen;
+        connect(m_ffmscreen, &ffmpegScreen::gotFrame, this,
+                [ = ](QImage image) {
+            if (m_isPath) {
+                qreal scaleFactor = QGuiApplication::primaryScreen()->devicePixelRatio();
+                image = FreehandSelector::fromPath(image, m_path, scaleFactor);
+            }
+            setImageInfo(image, false);
+            emit loadImage(image);
+
+            // update();
+        });
+    }
+
+    // QString hwndstr = "hwnd=" + QString::number((quintptr)hwnd, 10);
+    m_ffmscreen->stopwork();
+    m_ffmscreen->initparam("desktop",
+                           "25",
+                           QString::number(x),
+                           QString::number(y),
+                           QString("%1x%2").arg(w).arg(h)
+                           );
+    m_ffmscreen->startwork();
+}
+
+void TestWidgetGL::loaderImageDXGI(const QRect& m_rect, HWND hwnd, bool ishwnd)
+{
+    if (!m_capturer) {
+        m_capturer = new ContinuousScreenCapture(hwnd);
+        connect(m_capturer, &ContinuousScreenCapture::frameCaptured,
+                this, [this](const QImage& img) {
+            QImage image = img;
+
+            if (m_isPath) {
+                qreal scaleFactor = QGuiApplication::primaryScreen()->devicePixelRatio();
+                image = FreehandSelector::fromPath(image, m_path, scaleFactor);
+            }
+            setImageInfo(image, false);
+            emit loadImage(image);
+
+            // update();
+        });
+        m_capturer->start(); // 开始连续捕获
+    }
+
+    if (ishwnd) {
+        m_capturer->setHwnd(hwnd);
+    } else {
+        m_capturer->setScreenSize(m_rect.x(),
+                                  m_rect.y(),
+                                  m_rect.width(),
+                                  m_rect.height());
+    }
+}
+
 void TestWidgetGL::setImageInfo(QImage& image, bool showsy)
 {
     m_allcount++;
@@ -246,8 +339,10 @@ void TestWidgetGL::setImageInfo(QImage& image, bool showsy)
         m_count++;
     }
 
-    QString str = QString::number(m_fps) + "fps\n" +
+    QString str = QString::number(m_fps) + "fps " +
                   QString::number(m_allcount);
+
+    labelfps->setText(str);
 
     if (showsy) {
         QPainter painter(&image);
@@ -270,7 +365,7 @@ void TestWidgetGL::paintEvent(QPaintEvent *event)
         QFont font("Arial", 30);
         painter.setFont(font);
         painter.setPen(Qt::white);
-        QString str = QString::number(m_fps) + "fps\n" +
+        QString str = QString::number(m_fps) + "fps " +
                       QString::number(m_allcount);
 
         // 绘制文本到指定位置

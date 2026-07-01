@@ -13,6 +13,11 @@ ContinuousScreenCapture::ContinuousScreenCapture(HWND hWnd)
     , m_pContext(nullptr)
     , m_pDuplication(nullptr)
 {
+    m_x = 0;
+    m_y = 0;
+    m_width = GetSystemMetrics(SM_CXSCREEN);
+    m_height = GetSystemMetrics(SM_CYSCREEN);
+
     init();
 
     // 将对象移动到工作线程（但构造函数在主线程，所以稍后移）
@@ -122,23 +127,30 @@ void ContinuousScreenCapture::captureLoop()
 {
     // 循环，直到 m_running 被置为 0
     while (m_running.loadAcquire()) {
-        // 获取窗口矩形
-        RECT windowRect;
+        int left = m_x;
+        int top = m_y;
+        int width = m_width;
+        int height = m_height;
 
-        bool isHwnd = true;
+        if (m_hWnd) {
+            RECT windowRect;
 
-        if (!GetWindowRect(m_hWnd, &windowRect)) {
-            isHwnd = false;
-
-            // QThread::msleep(10);
-            // continue;
+            if (GetWindowRect(m_hWnd, &windowRect)) {
+                left = windowRect.left;
+                top = windowRect.top;
+                width = windowRect.right - windowRect.left;
+                height = windowRect.bottom - windowRect.top;
+            }
         }
-        int left = windowRect.left;
-        int top = windowRect.top;
-        int width = windowRect.right - windowRect.left;
-        int height = windowRect.bottom - windowRect.top;
 
-        if (isHwnd && ((width <= 0) || (height <= 0))) {
+        int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+        // 调整视图,以保证在视窗(0,0,screenWidth,screenHeight)内
+        getViewFinder(left, top, width, height,
+                      0, 0, screenWidth, screenHeight);
+
+        if ((width < 1) || (height < 1)) {
             QThread::msleep(10);
             continue;
         }
@@ -200,27 +212,20 @@ void ContinuousScreenCapture::captureLoop()
         hr = m_pContext->Map(pStagingTexture, 0, D3D11_MAP_READ, 0, &mapped);
 
         if (SUCCEEDED(hr)) {
-            int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-            int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+            // int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+            // int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
-            if (screenWidth > mapped.RowPitch / 4) {
-                screenWidth = mapped.RowPitch / 4;
-            }
+            // if (screenWidth > mapped.RowPitch / 4) {
+            //     screenWidth = mapped.RowPitch / 4;
+            // }
 
-            if (screenHeight > mapped.DepthPitch / 4) {
-                screenHeight = mapped.DepthPitch / 4;
-            }
+            // if (screenHeight > mapped.DepthPitch / 4) {
+            //     screenHeight = mapped.DepthPitch / 4;
+            // }
 
-            if (!isHwnd) {
-                left = 0;
-                top = 0;
-                width = screenWidth;
-                height = screenHeight;
-            } else {
-                // 调整视图,以保证在视窗(0,0,screenWidth,screenHeight)内
-                getViewFinder(left, top, width, height,
-                              0, 0, screenWidth, screenHeight);
-            }
+            // // 调整视图,以保证在视窗(0,0,screenWidth,screenHeight)内
+            // getViewFinder(left, top, width, height,
+            //               0, 0, screenWidth, screenHeight);
 #if 0
             QImage result = QImage((const uchar *)mapped.pData,
                                    screenWidth,

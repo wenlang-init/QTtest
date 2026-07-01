@@ -46,7 +46,7 @@ void ffmpegScreen::run()
             // qdebug << "Got frame:" << image.size();
             emit gotFrame(image);
         } else {
-            qdebug << "Failed to get frame";
+            // qdebug << "Failed to get frame";
         }
 
         // qdebug << t.msecsTo(QTime::currentTime());

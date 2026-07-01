@@ -161,6 +161,11 @@ set(screensources
 
     src/screen/testwidgetgl.h
     src/screen/testwidgetgl.cpp
+
+    src/screen/regionselector.h
+    src/screen/regionselector.cpp
+    src/screen/freehandselector.h
+    src/screen/freehandselector.cpp
 )
 
 # pffft

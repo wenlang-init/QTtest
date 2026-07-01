@@ -6,8 +6,10 @@
 #include "glimagewindow.h"
 #include <QDateTime>
 #include <QImage>
+#include <QPainterPath>
 #include "src/public/funchelper.h"
 
+class QLabel;
 class ffmpegScreen;
 class ContinuousScreenCapture;
 class TestWidgetGL : public QWidget {
@@ -24,11 +26,19 @@ signals:
 
 protected:
 
+    void loaderImageFFmpeg(const QRect& m_rect);
+    void loaderImageDXGI(const QRect& m_rect,
+                         HWND         hwnd = nullptr,
+                         bool         ishwnd = false);
     void setImageInfo(QImage& image,
                       bool    showsy = true);
     void paintEvent(QPaintEvent *event) override;
 
 private:
+
+    QLabel *labelfps;
+    QPainterPath m_path;
+    bool m_isPath = false;
 
     GLImageWidget *m_glImageWidget = nullptr;
     GLImageWindow *m_glImageWindow = nullptr;

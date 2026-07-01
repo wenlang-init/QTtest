@@ -19,10 +19,62 @@ public:
     }
 
     static bool getScreen(QImage& image);
+    void        setScreenSize(int x,
+                              int y,
+                              int width,
+                              int height) {
+        m_x = x;
+        m_y = y;
+        m_width = width;
+        m_height = height;
+
+        m_hwnd = nullptr;
+    }
+
+    void setHwnd(HWND hwnd) {
+        m_hwnd = hwnd;
+    }
 
 private:
 
     explicit DXGIGetScreen(QObject *parent = nullptr);
+    void getViewFinder(int& left, int& top, int& width, int& height,
+                       int  minX, int  minY, int  maxX, int  maxY) {
+        if (minX > maxX) return;
+
+        if (minY > maxY) return;
+
+        int right = width + left;
+        int bottom = height + top;
+
+        if ((right > minX) && (left < maxX)) {
+            if (right > maxX) {
+                width -= (right - maxX);
+            }
+
+            if (left < minX) {
+                width -= (minX - left);
+                left = minX;
+            }
+        } else {
+            left = 0;
+            width = 0;
+        }
+
+        if ((bottom > minY) && (top < maxY)) {
+            if (bottom > maxY) {
+                height -= (bottom - maxY);
+            }
+
+            if (top < minY) {
+                height -= (minY - top);
+                top = minY;
+            }
+        } else {
+            top = 0;
+            height = 0;
+        }
+    }
 
 signals:
 
@@ -54,7 +106,8 @@ private:
 private:
 
     BOOL m_bInit;
-    int m_iWidth, m_iHeight;
+    int m_x, m_y, m_width, m_height;
+    HWND m_hwnd;
 
     ID3D11Device *m_hDevice;
     ID3D11DeviceContext *m_hContext;

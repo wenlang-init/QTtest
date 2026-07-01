@@ -18,6 +18,13 @@ DXGIGetScreen::DXGIGetScreen(QObject *parent)
     m_hContext = NULL;
     m_hDeskDupl = NULL;
 
+    m_x = 0;
+    m_y = 0;
+    m_width = GetSystemMetrics(SM_CXSCREEN);
+    m_height = GetSystemMetrics(SM_CYSCREEN);
+
+    m_hwnd = nullptr;
+
     ZeroMemory(&m_dxgiOutDesc, sizeof(m_dxgiOutDesc));
 
     Init();
@@ -327,10 +334,53 @@ BOOL DXGIGetScreen::QueryFrame(QImage& image) // (void *pImgData, INT&
         // memcpy((BYTE
         // *)pImgData,mappedRect.pBits,m_dxgiOutDesc.DesktopCoordinates.right *
         // m_dxgiOutDesc.DesktopCoordinates.bottom *4);
+
+        int screenWidth = m_dxgiOutDesc.DesktopCoordinates.right -
+                          m_dxgiOutDesc.DesktopCoordinates.left;
+        int screenHeight = m_dxgiOutDesc.DesktopCoordinates.bottom -
+                           m_dxgiOutDesc.DesktopCoordinates.top;
+        int left = m_x;
+        int top = m_y;
+        int width = m_width;
+        int height = m_height;
+
+        if (m_hwnd) {
+            RECT windowRect;
+
+            if (GetWindowRect(m_hwnd, &windowRect)) {
+                left = windowRect.left;
+                top = windowRect.top;
+                width = windowRect.right - windowRect.left;
+                height = windowRect.bottom - windowRect.top;
+            }
+        }
+
+        if (width < 1) width = 1;
+
+        if (height < 1) height = 1;
+
+        // 调整视图,以保证在视窗(0,0,screenWidth,screenHeight)内
+        getViewFinder(left, top, width, height,
+                      0, 0, screenWidth, screenHeight);
+#if 0
         image = QImage((const uchar *)mappedRect.pBits,
-                       m_dxgiOutDesc.DesktopCoordinates.right,
-                       m_dxgiOutDesc.DesktopCoordinates.bottom,
-                       QImage::Format_ARGB32).copy();
+                       screenWidth,
+                       screenHeight,
+                       mappedRect.Pitch,
+                       QImage::Format_ARGB32).copy(left, top, width, height);
+#else // if 0
+        const int bytesPerPixel = 4;
+        image = QImage(width, height, QImage::Format_ARGB32);
+
+        for (int y = 0; y < height; ++y) {
+            const quint8 *srcRow = static_cast<const quint8 *>(mappedRect.pBits) +
+                                   (top + y) * mappedRect.Pitch +
+                                   left * bytesPerPixel;
+            quint8 *dstRow = image.scanLine(y);
+
+            memcpy(dstRow, srcRow, width * bytesPerPixel);
+        }
+#endif // if 0
         hStagingSurf->Unmap();
     }
 

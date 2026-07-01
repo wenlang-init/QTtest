@@ -12,6 +12,7 @@
 #include <QLabel>
 
 #include "ffmpegscreen.h"
+
 #define USE_FFMPEG
 
 #ifndef USE_FFMPEG
@@ -166,7 +167,7 @@ screenWidget::screenWidget(QWidget *parent)
 
         // qDebug() << tm.msecsTo(QDateTime::currentDateTime());
         // tm = QDateTime::currentDateTime();
-        pixmap = QPixmap::fromImage(image.copy(m_rect));
+        pixmap = QPixmap::fromImage(image); // .copy(m_rect));
 
         // qDebug() << tm.msecsTo(QDateTime::currentDateTime());
 # endif // if 0
@@ -305,6 +306,15 @@ void screenWidget::changeWindow(void *phwnd)
     } else {
         qDebug() << hwnd << m_rect;
     }
+
+# if !defined(USE_FFMPEG) && !defined(USE_QTSCREEN)
+    DXGIGetScreen::getInstance().setHwnd(hwnd);
+
+    // DXGIGetScreen::getInstance().setScreenSize(m_rect.x(),
+    //                                            m_rect.y(),
+    //                                            m_rect.width(),
+    //                                            m_rect.height());
+# endif // if !defined(USE_FFMPEG) && !defined(USE_QTSCREEN)
 
 # if defined(USE_FFMPEG)
     ffmpegScreen::instance().stopwork();
