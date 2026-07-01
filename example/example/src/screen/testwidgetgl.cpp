@@ -15,22 +15,17 @@
 #include "regionselector.h"
 #include "freehandselector.h"
 
-// #define USEDOPENGLWINDOW
+#define USEDOPENGLWINDOW
 
 TestWidgetGL::TestWidgetGL(QWidget *parent)
     : QWidget{parent}
 {
-    m_glImageWidget = new GLImageWidget(this);
-    connect(this,
-            &TestWidgetGL::loadImage,
-            m_glImageWidget,
-            &GLImageWidget::loadImage);
-    m_glImageWidget->setDisplayMode(GLImageWidget::Fit);
     QComboBox   *combox = new QComboBox(this);
     QPushButton *pushbotton = new QPushButton(this);
     QPushButton *pushbottonrect = new QPushButton(this);
     QPushButton *pushbottonscreen = new QPushButton(this);
     QCheckBox   *checkbox = new QCheckBox(this);
+
     labelfps = new QLabel(this);
     checkbox->setText("使用DXGI");
     pushbotton->setText("刷新");
@@ -55,7 +50,26 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
     vlayout->setContentsMargins(0, 0, 0, 0);
     vlayout->addWidget(label);
     vlayout->addLayout(hlayout);
+
+
+#ifdef USEDOPENGLWINDOW
+    m_glImageWindow = new GLImageWindow;
+    m_glImageWindow->setDisplayMode(GLImageWindow::Fit);
+    connect(this,
+            &TestWidgetGL::loadImage,
+            m_glImageWindow,
+            &GLImageWindow::loadImage);
+    QWidget *widget = createWindowContainer(m_glImageWindow, this);
+    vlayout->addWidget(widget);
+#else // ifdef USEDOPENGLWINDOW
+    m_glImageWidget = new GLImageWidget(this);
+    connect(this,
+            &TestWidgetGL::loadImage,
+            m_glImageWidget,
+            &GLImageWidget::loadImage);
+    m_glImageWidget->setDisplayMode(GLImageWidget::Fit);
     vlayout->addWidget(m_glImageWidget);
+#endif // ifdef USEDOPENGLWINDOW
 
     connect(checkbox, &QCheckBox::checkStateChanged, this, [ = ]
     {
@@ -205,20 +219,6 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
                             true);
         }
     });
-
-#ifdef USEDOPENGLWINDOW
-    m_glImageWindow = new GLImageWindow;
-    m_glImageWindow->setDisplayMode(GLImageWindow::Fit);
-    QObject::connect(m_glImageWindow, &QWidget::destroyed, this, [ = ]() {
-        qDebug() << "widget destroyed:" << sender();
-    });
-    connect(this,
-            &TestWidgetGL::loadImage,
-            m_glImageWindow,
-            &GLImageWindow::loadImage);
-    m_glImageWindow->resize(600, 600);
-    m_glImageWindow->show();
-#endif // ifdef USEDOPENGLWINDOW
 }
 
 TestWidgetGL::~TestWidgetGL()
@@ -300,6 +300,8 @@ void TestWidgetGL::loaderImageDXGI(const QRect& m_rect, HWND hwnd, bool ishwnd)
 {
     if (!m_capturer) {
         m_capturer = new ContinuousScreenCapture(hwnd);
+
+        // m_capturer->setLowFpsMode(true, 15);
         connect(m_capturer, &ContinuousScreenCapture::frameCaptured,
                 this, [this](const QImage& img) {
             QImage image = img;

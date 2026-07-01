@@ -1,5 +1,6 @@
 #include "ContinuousScreenCapture.h"
 #include <QDebug>
+#include <QDateTime>
 #include <comdef.h>
 #include <QPainter>
 
@@ -33,11 +34,7 @@ ContinuousScreenCapture::~ContinuousScreenCapture()
     stop(); // 确保停止循环并等待线程结束
 
     // 释放所有 COM 资源
-    if (m_pDuplication) m_pDuplication->Release();
-
-    if (m_pContext) m_pContext->Release();
-
-    if (m_pDevice) m_pDevice->Release();
+    destroyResources();
 }
 
 void ContinuousScreenCapture::start()
@@ -54,6 +51,24 @@ void ContinuousScreenCapture::stop()
     if (m_workerThread.isRunning()) {
         m_workerThread.quit();
         m_workerThread.wait();
+    }
+}
+
+void ContinuousScreenCapture::destroyResources()
+{
+    if (m_pDuplication) {
+        m_pDuplication->Release();
+        m_pDuplication = nullptr;
+    }
+
+    if (m_pContext) {
+        m_pContext->Release();
+        m_pContext = nullptr;
+    }
+
+    if (m_pDevice) {
+        m_pDevice->Release();
+        m_pDevice = nullptr;
     }
 }
 
@@ -75,6 +90,7 @@ bool ContinuousScreenCapture::init()
 
     if (FAILED(hr)) {
         qCritical() << "D3D11CreateDevice failed:" << hr;
+        destroyResources();
         return false;
     }
 
@@ -83,6 +99,7 @@ bool ContinuousScreenCapture::init()
 
     if (FAILED(hr)) {
         qCritical() << "QueryInterface IDXGIDevice failed:" << hr;
+        destroyResources();
         return false;
     }
 
@@ -92,6 +109,7 @@ bool ContinuousScreenCapture::init()
 
     if (FAILED(hr)) {
         qCritical() << "GetParent IDXGIAdapter failed:" << hr;
+        destroyResources();
         return false;
     }
 
@@ -101,6 +119,7 @@ bool ContinuousScreenCapture::init()
 
     if (FAILED(hr)) {
         qCritical() << "EnumOutputs failed:" << hr;
+        destroyResources();
         return false;
     }
 
@@ -110,6 +129,7 @@ bool ContinuousScreenCapture::init()
 
     if (FAILED(hr)) {
         qCritical() << "QueryInterface IDXGIOutput1 failed:" << hr;
+        destroyResources();
         return false;
     }
 
@@ -118,15 +138,58 @@ bool ContinuousScreenCapture::init()
 
     if (FAILED(hr)) {
         qCritical() << "DuplicateOutput failed:" << hr;
+        destroyResources();
         return false;
     }
+    m_isinit = true;
     return true;
+}
+
+bool ContinuousScreenCapture::reInit()
+{
+    destroyResources();
+    m_isinit = false;
+    return init();
 }
 
 void ContinuousScreenCapture::captureLoop()
 {
+    // 由于每帧耗时差距太大，并不能控制帧率
+    // 这里实现的是 控制帧的间隔不低于m_lowfpsinterval
+    QDateTime dateTime = QDateTime::currentDateTime();
+    qint64    timeout;
+    qint64    sleepTime;
+    quint64   lastcount = 0;
+    quint64   count = 0;
+
+    D3D11_TEXTURE2D_DESC stagingDesc;
+
+    PointerData m_pointerData; // 鼠标指针数据（在捕获循环中更新）
+    int mouseX = 0;            // 记录鼠标位置
+    int mouseY = 0;
+
     // 循环，直到 m_running 被置为 0
     while (m_running.loadAcquire()) {
+        if (!m_isinit) {
+            init();
+            QThread::msleep(100);
+            continue;
+        }
+
+        if (m_lowfps) {
+            if (lastcount != count) {
+                timeout = dateTime.msecsTo(QDateTime::currentDateTime());
+
+                sleepTime = m_lowfpsinterval - (timeout * 1000);
+
+                if (sleepTime > 0) {
+                    QThread::usleep(sleepTime);
+                }
+                dateTime = QDateTime::currentDateTime();
+                lastcount = count;
+            }
+        }
+
         int left = m_x;
         int top = m_y;
         int width = m_width;
@@ -169,11 +232,30 @@ void ContinuousScreenCapture::captureLoop()
 
         if (FAILED(hr)) {
             qWarning() << "AcquireNextFrame failed:" << hr;
-            QThread::msleep(10);
+
+            // if (DXGI_ERROR_ACCESS_LOST == hr)
+            {
+                reInit();
+                QThread::msleep(100);
+            }
             continue;
         }
 
-        // 获取桌面纹理
+        {
+            // 鼠标数据获取 ,立刻读取并缓存鼠标数据（CPU 轻量操作）
+            if (frameInfo.PointerPosition.Visible) {
+                mouseX = frameInfo.PointerPosition.Position.x;
+                mouseY = frameInfo.PointerPosition.Position.y;
+            }
+
+            PointerData data;
+
+            if (getPointerShape(frameInfo, m_pDuplication, data)) {
+                m_pointerData = data;
+            }
+        }
+
+        // 获取桌面纹理 可能触发 GPU 阻塞）
         ID3D11Texture2D *pDesktopTexture = nullptr;
         hr = pDesktopResource->QueryInterface(__uuidof(ID3D11Texture2D),
                                               (void **)&pDesktopTexture);
@@ -185,14 +267,18 @@ void ContinuousScreenCapture::captureLoop()
             continue;
         }
 
-        // 创建 Staging 纹理（复用？可优化为缓存，但为清晰这里每帧新建）
-        D3D11_TEXTURE2D_DESC desc;
-        pDesktopTexture->GetDesc(&desc);
-        D3D11_TEXTURE2D_DESC stagingDesc = desc;
+        // 创建 Staging 纹理
+        pDesktopTexture->GetDesc(&stagingDesc);
         stagingDesc.Usage = D3D11_USAGE_STAGING;
         stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
         stagingDesc.BindFlags = 0;
         stagingDesc.MiscFlags = 0;
+
+        // stagingDesc.MipLevels = 1;
+        // stagingDesc.ArraySize = 1;
+        // stagingDesc.SampleDesc.Count = 1;
+
+        // stagingDesc.Format = DXGI_FORMAT_R8G8B8A8_UINT;
 
         ID3D11Texture2D *pStagingTexture = nullptr;
         hr = m_pDevice->CreateTexture2D(&stagingDesc, nullptr, &pStagingTexture);
@@ -212,20 +298,6 @@ void ContinuousScreenCapture::captureLoop()
         hr = m_pContext->Map(pStagingTexture, 0, D3D11_MAP_READ, 0, &mapped);
 
         if (SUCCEEDED(hr)) {
-            // int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-            // int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-
-            // if (screenWidth > mapped.RowPitch / 4) {
-            //     screenWidth = mapped.RowPitch / 4;
-            // }
-
-            // if (screenHeight > mapped.DepthPitch / 4) {
-            //     screenHeight = mapped.DepthPitch / 4;
-            // }
-
-            // // 调整视图,以保证在视窗(0,0,screenWidth,screenHeight)内
-            // getViewFinder(left, top, width, height,
-            //               0, 0, screenWidth, screenHeight);
 #if 0
             QImage result = QImage((const uchar *)mapped.pData,
                                    screenWidth,
@@ -233,7 +305,7 @@ void ContinuousScreenCapture::captureLoop()
                                    mapped.RowPitch,
                                    QImage::Format_ARGB32
                                    ).copy(left, top, width, height);
-#else // if 1
+#else // if 0
             const int bytesPerPixel = 4;
             QImage    result(width, height, QImage::Format_ARGB32);
 
@@ -245,69 +317,101 @@ void ContinuousScreenCapture::captureLoop()
 
                 memcpy(dstRow, srcRow, width * bytesPerPixel);
 
-                // // BGRA -> ARGB 转换
+                // ARGB -> ARGB 转换
                 // for (int x = 0; x < width; ++x) {
                 //     const quint8 *src = srcRow + x * bytesPerPixel;
                 //     quint8 *dst = dstRow + x * bytesPerPixel;
-                //     dst[0] = src[2]; // R
-                //     dst[1] = src[1]; // G
-                //     dst[2] = src[0]; // B
-                //     dst[3] = src[3]; // A
+                //     dst[0] = src[0];
+                //     dst[1] = src[1];
+                //     dst[2] = src[2];
+                //     dst[3] = src[3];
                 // }
             }
 #endif // if 1
 
-            // 处理鼠标光标
-            // if (frameInfo.PointerShapeBufferSize > 0) {
-            //     PointerData data = getPointerShape(frameInfo);
+            if (!result.isNull()) {
+                // 处理鼠标光标
+                if (isShowMouse && !m_pointerData.image.isNull()) {
+                    int posX = mouseX - left + m_pointerData.hotX;
+                    int posY = mouseY - top + m_pointerData.hotY;
+                    QPainter painter(&result);
 
-            //     if (!data.image.isNull()) {
-            //         int posX = frameInfo.PointerPosition.Position.x - left -
-            //                    data.hotX;
-            //         int posY = frameInfo.PointerPosition.Position.y - top -
-            //                    data.hotY;
-            //         QPainter painter(&result);
-            //         // painter.setPen(Qt::red);             // 文字颜色
-            //         // painter.setFont(QFont("Arial", 50)); // 字体
-            //         // painter.drawText(50, 50, "saaaaaaaaaaa");
-            //         painter.drawImage(posX, posY, data.image);
-            //         painter.end();
-            //     }
-            // }
+                    if (m_pointerData.isMaskedColor)
+                    {
+                        int yStart = posY;
+                        int yHeight = m_pointerData.image.height();
+                        int xStart = posX;
+                        int xWidth = m_pointerData.image.width();
+                        const int bytesPerPixel = 4;
 
-            // 发送信号（跨线程安全）
-            if (!result.isNull()) emit frameCaptured(result);
+                        if (yStart < 0) yStart = 0;
 
+                        if (xStart < 0) xStart = 0;
+
+                        for (int y = 0; y < yHeight; ++y) {
+                            if (y + yStart >= result.height()) break;
+                            const quint8 *srcRow =
+                                m_pointerData.image.scanLine(y);
+                            quint8 *dstRow = result.scanLine(y + yStart) +
+                                             xStart * bytesPerPixel;
+
+                            for (int x = 0; x < xWidth; x++) {
+                                if (x + xStart >= result.width()) break;
+                                const quint8 *src = srcRow + x * bytesPerPixel;
+                                quint8 *dst = dstRow + x * bytesPerPixel;
+
+                                if (src[3] == 0) {
+                                    dst[0] = src[0];
+                                    dst[1] = src[1];
+                                    dst[2] = src[2];
+                                } else {
+                                    // 0xff
+                                    dst[0] ^= src[0];
+                                    dst[1] ^= src[1];
+                                    dst[2] ^= src[2];
+                                }
+                            }
+                        }
+
+                        // painter.drawImage(posX, posY, m_pointerData.image);
+                    } else {
+                        painter.drawImage(posX, posY, m_pointerData.image);
+                    }
+                    painter.end();
+                }
+                emit frameCaptured(result);
+            }
             m_pContext->Unmap(pStagingTexture, 0);
         } else {
             qWarning() << "Map failed:" << hr;
         }
-
         pStagingTexture->Release();
 
         // 释放当前帧资源（必须）
         m_pDuplication->ReleaseFrame();
+
+        count++;
     }
 }
 
-PointerData ContinuousScreenCapture::getPointerShape(
-    const DXGI_OUTDUPL_FRAME_INFO& frameInfo)
+bool ContinuousScreenCapture::getPointerShape(
+    const DXGI_OUTDUPL_FRAME_INFO& frameInfo,
+    IDXGIOutputDuplication        *pDuplication,
+    PointerData                  & result)
 {
-    PointerData result;
-
-    if (frameInfo.PointerShapeBufferSize == 0) {
-        return result; // 空图像
+    if (frameInfo.PointerShapeBufferSize <= 0) {
+        return false; // 空图像
     }
 
     std::vector<BYTE> shapeBuffer(frameInfo.PointerShapeBufferSize);
     DXGI_OUTDUPL_POINTER_SHAPE_INFO shapeInfo;
     UINT bufferSize = frameInfo.PointerShapeBufferSize;
 
-    HRESULT hr = m_pDuplication->GetFramePointerShape(
+    HRESULT hr = pDuplication->GetFramePointerShape(
         bufferSize, shapeBuffer.data(), &bufferSize, &shapeInfo);
 
     if (FAILED(hr) || (shapeInfo.Width == 0) || (shapeInfo.Height == 0)) {
-        return result;
+        return false;
     }
 
     // 保存热区
@@ -321,20 +425,31 @@ PointerData ContinuousScreenCapture::getPointerShape(
 
     switch (shapeInfo.Type) {
     case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR: {
+        // cursorImg = QImage(bits,
+        //                    shapeInfo.Width,
+        //                    shapeInfo.Height,
+        //                    QImage::Format_ARGB32); break;
         const quint32 *src = reinterpret_cast<const quint32 *>(bits);
 
         for (int y = 0; y < shapeInfo.Height; ++y) {
-            QRgb *dst = reinterpret_cast<QRgb *>(cursorImg.scanLine(y));
+            const quint8 *srcRow =
+                reinterpret_cast<const quint8 *>(src + y * shapeInfo.Width);
+            quint8 *dstRow = cursorImg.scanLine(y);
+            memcpy(dstRow, srcRow, shapeInfo.Width * 4);
 
-            for (int x = 0; x < shapeInfo.Width; ++x) {
-                quint32 pixel = src[y * shapeInfo.Width + x];
-                dst[x] = qRgba(
-                    (pixel >> 16) & 0xFF,
-                    (pixel >> 8) & 0xFF,
-                    pixel & 0xFF,
-                    (pixel >> 24) & 0xFF
-                    );
-            }
+            // QRgb *dst = reinterpret_cast<QRgb *>(cursorImg.scanLine(y));
+            // for (int x = 0; x < shapeInfo.Width; ++x) {
+            //     // quint8 *pixel = (quint8 *)(&src[y * shapeInfo.Width + x]);
+            //     // argb->argb;
+            //     // dst[x] = qRgba(pixel[2], pixel[1], pixel[0], pixel[3]);
+            //     quint32 pixel = src[y * shapeInfo.Width + x];
+            //     dst[x] = qRgba(
+            //         (pixel >> 16) & 0xFF,
+            //         (pixel >> 8) & 0xFF,
+            //         pixel & 0xFF,
+            //         (pixel >> 24) & 0xFF
+            //         );
+            // }
         }
         break;
     }
@@ -366,8 +481,27 @@ PointerData ContinuousScreenCapture::getPointerShape(
     }
 
     case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MASKED_COLOR: {
+        {
+            result.isMaskedColor = true;
+            const quint32 *src = reinterpret_cast<const quint32 *>(bits);
+
+            for (int y = 0; y < shapeInfo.Height; ++y) {
+                QRgb *dst = reinterpret_cast<QRgb *>(cursorImg.scanLine(y));
+
+                for (int x = 0; x < shapeInfo.Width; ++x) {
+                    quint32 pixel = src[y * shapeInfo.Width + x];
+                    dst[x] = qRgba(
+                        (pixel >> 16) & 0xFF,
+                        (pixel >> 8) & 0xFF,
+                        pixel & 0xFF,
+                        (pixel >> 24) & 0xFF
+                        );
+                }
+            }
+            break;
+        }
         const quint32 *src = reinterpret_cast<const quint32 *>(bits);
-        const BYTE    *mask = bits + shapeInfo.Width * shapeInfo.Height * 4;
+        const BYTE *mask = bits + shapeInfo.Width * shapeInfo.Height * 4;
 
         for (int y = 0; y < shapeInfo.Height; ++y) {
             QRgb *dst = reinterpret_cast<QRgb *>(cursorImg.scanLine(y));
@@ -395,9 +529,9 @@ PointerData ContinuousScreenCapture::getPointerShape(
     }
 
     default:
-        return result;
+        return false;
     }
 
     result.image = cursorImg;
-    return result;
+    return true;
 }

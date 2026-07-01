@@ -12,6 +12,10 @@ struct PointerData {
     QImage image;
     int    hotX;
     int    hotY;
+    bool   isMaskedColor;
+    PointerData() {
+        isMaskedColor = false;
+    }
 };
 
 class ContinuousScreenCapture : public QObject {
@@ -50,13 +54,25 @@ public:
         m_height = GetSystemMetrics(SM_CYSCREEN);
     }
 
+    void setLowFpsMode(bool lowfps = false, int fps = 10) {
+        m_lowfps = lowfps;
+        m_lowfpsinterval = fps > 0 ?
+                           (1000 * 1000.0 / (fps + 1)) : (1000 * 1000.0 / 11);
+    }
+
+    void setshowMouse(bool show = true) {
+        isShowMouse = show;
+    }
+
 signals:
 
     void frameCaptured(const QImage& image); // 每帧捕获完成时发送
 
 private:
 
+    void destroyResources(); // 销毁资源（在析构和重新初始化时调用）
     bool init();
+    bool reInit();           // 重新初始化（在捕获循环中调用，以处理设备丢失等情况）
 
 public:
 
@@ -101,10 +117,17 @@ public:
 
 private:
 
-    void        captureLoop(); // 循环体（在单独线程中运行）
-    PointerData getPointerShape(const DXGI_OUTDUPL_FRAME_INFO& frameInfo);
+    void captureLoop(); // 循环体（在单独线程中运行）
+    bool getPointerShape(const DXGI_OUTDUPL_FRAME_INFO& frameInfo,
+                         IDXGIOutputDuplication        *pDuplication,
+                         PointerData                  & result);
 
-    QAtomicInt m_running;      // 控制循环标志
+    bool m_isinit = false;                     // 是否初始化成功
+    QAtomicInt m_running;                      // 控制循环标志
+    bool m_lowfps = false;                     // 是否低帧率模式
+    int m_lowfpsinterval = 1000 * 1000.0 / 11; // 低帧率模式的间隔时间（微秒）
+
+    bool isShowMouse = true;                   // 是否显示鼠标指针
 
     // DXGI 资源（在构造时初始化，整个生命周期复用）
     ID3D11Device *m_pDevice;
