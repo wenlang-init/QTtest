@@ -31,12 +31,18 @@ static const char *fragmentShaderSource =
 GLImageWidget::GLImageWidget(QWidget *parent) :
     QOpenGLWidget(parent)
 {
+    // setWindowFlags(Qt::FramelessWindowHint);
+    // setAttribute(Qt::WA_TranslucentBackground); // 透明，需顶层窗口透明，如果不是顶层窗口，此处控制无效
+
     // setAutoFillBackground(false);
     auto version = this->format().version();
 
     // 请求 4.5 Core Profile
     QSurfaceFormat format;
 
+    format.setAlphaBufferSize(8);
+
+    // format.setSamples(4);
     format.setVersion(4, 5);
     format.setProfile(QSurfaceFormat::CoreProfile);
     setFormat(format);
@@ -77,7 +83,13 @@ void GLImageWidget::initializeGL()
 {
     initializeOpenGLFunctions(); // 加载 4.5 函数
 
-    glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+    // 启用混合，以实现透明效果
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // 置清除颜色为完全透明 (R, G, B, A) = (0, 0, 0, 0)
+    glClearColor(0.0f, 0.0f, 0.0f, 0.5f);
+
     setupShaders();
     setupGeometry();
 

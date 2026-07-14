@@ -18,9 +18,10 @@ public:
     void setpixmap(const QPixmap& pixmap);
     void settext(QString text);
 
-    void settext_fontcolor(QFont textfont = QFont("Microsoft Yahei", 10,
-                                                  QFont::Normal),
-                           QColor textColor = Qt::black);
+    void settext_color(const QColor& textColor = Qt::black);
+    void settext_fontcolor(const QFont& textfont = QFont("Microsoft Yahei", 10,
+                                                         QFont::Normal),
+                           const QColor& textColor = Qt::black);
 
     void set_checked(QColor color);
     void set_hover(QColor color);

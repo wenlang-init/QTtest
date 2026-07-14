@@ -6,11 +6,12 @@
 #include "tmsecne.h"
 #include "tmitem.h"
 
-class GraphicsWidget : public QWidget
-{
+class GraphicsWidget : public QWidget {
     Q_OBJECT
+
 public:
-    explicit GraphicsWidget(QWidget *parent = nullptr);
+
+    Q_INVOKABLE explicit GraphicsWidget(QWidget *parent = nullptr);
 
 signals:
 };

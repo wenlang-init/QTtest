@@ -13,7 +13,7 @@ class ShouYinW : public QWidget {
 
 public:
 
-    explicit ShouYinW(QWidget *parent = nullptr);
+    Q_INVOKABLE explicit ShouYinW(QWidget *parent = nullptr);
     ~ShouYinW();
     void    setbtnEnable(bool enable);
 #ifdef Q_OS_ANDROID

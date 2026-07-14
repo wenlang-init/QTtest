@@ -17,7 +17,7 @@ public:
         int cnt;
     };
 
-    explicit MainWindow(QWidget *parent = nullptr);
+    Q_INVOKABLE explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
     void addWindow(QString     processName,
                    const char *lpClassName,

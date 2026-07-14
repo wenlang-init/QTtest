@@ -13,7 +13,7 @@ class CustomPlotQMLWidget : public QWidget {
 
 public:
 
-    explicit CustomPlotQMLWidget(QWidget *parent = nullptr);
+    Q_INVOKABLE explicit CustomPlotQMLWidget(QWidget *parent = nullptr);
     ~CustomPlotQMLWidget();
 
     void addData(QVector<double>& data);

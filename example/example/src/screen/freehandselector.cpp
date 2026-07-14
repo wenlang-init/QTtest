@@ -10,7 +10,6 @@
 FreehandSelector::FreehandSelector(QWidget *parent)
     : QWidget(parent)
     , m_isDrawing(false)
-    , m_finished(false)
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
     setAttribute(Qt::WA_TranslucentBackground);
@@ -32,26 +31,30 @@ FreehandSelector::~FreehandSelector() {}
 
 QImage FreehandSelector::selectShapeScreen()
 {
+    if (!isHidden()) QImage();
+
     showFullScreen();
     raise();
     activateWindow();
 
     QEventLoop loop;
-    connect(this, &FreehandSelector::destroyed, &loop, &QEventLoop::quit);
 
-    while (!m_finished) {
-        QApplication::processEvents(QEventLoop::WaitForMoreEvents);
-    }
+    // 当选择完成或取消时退出循环
+    connect(this, &FreehandSelector::finished, &loop, &QEventLoop::quit);
 
+    // finished 信号由我们自定义，在 mouseReleaseEvent 或 keyPressEvent 中发射
+    loop.exec();
     close();
 
     if (m_path.isEmpty()) {
+        close();
         return QImage();
     }
 
     QScreen *screen = QGuiApplication::primaryScreen();
 
     if (!screen) {
+        close();
         return QImage();
     }
 
@@ -64,6 +67,7 @@ QImage FreehandSelector::selectShapeScreen()
     QRect physBounds = physPath.boundingRect().toRect();
 
     if (physBounds.isEmpty()) {
+        close();
         return QImage();
     }
 
@@ -104,17 +108,19 @@ QImage FreehandSelector::selectShapeScreen()
 
 QPainterPath FreehandSelector::selectShape()
 {
+    if (!isHidden()) return QPainterPath();
+
     showFullScreen();
     raise();
     activateWindow();
 
     QEventLoop loop;
-    connect(this, &FreehandSelector::destroyed, &loop, &QEventLoop::quit);
 
-    // 等待选择完成或取消
-    while (!m_finished) {
-        QApplication::processEvents(QEventLoop::WaitForMoreEvents);
-    }
+    // 当选择完成或取消时退出循环
+    connect(this, &FreehandSelector::finished, &loop, &QEventLoop::quit);
+
+    // finished 信号由我们自定义，在 mouseReleaseEvent 或 keyPressEvent 中发射
+    loop.exec();
 
     close();
     return m_path;
@@ -138,12 +144,11 @@ QImage FreehandSelector::fromPath(const QImage      & simage,
 
     // 创建结果图像（带 Alpha 通道）
     QImage result(tempImage.size(), QImage::Format_ARGB32);
-    result.setDevicePixelRatio(dpr);
     result.fill(Qt::transparent);
-
+#if 1
+    result.setDevicePixelRatio(dpr); // 影响绘制时的缩放, 但不影响图像本身的像素大小
     QPainter painter(&result);
     painter.setRenderHint(QPainter::Antialiasing);
-#if 1
 
     // 将路径转换到裁剪后的坐标（减去 rect 左上角）
     QPainterPath localPath = path;
@@ -153,6 +158,12 @@ QImage FreehandSelector::fromPath(const QImage      & simage,
     // 设置裁剪区域为路径（使用填充规则）
     painter.setClipPath(localPath);
 #else // if 1
+    // result.setDevicePixelRatio(1); // 后面的绘制路径缩放，所以这里不缩放，使用默认值1
+    QPainter painter(&result);
+
+    // 在QPainter后设置设备像素比率(不影响此次绘制)，确保返回的图像在高DPI显示器上使用QT绘制显示正确
+    result.setDevicePixelRatio(dpr);
+    painter.setRenderHint(QPainter::Antialiasing);
     QPainterPath physPath = path * QTransform::fromScale(dpr, dpr);
     QRect physBounds = physPath.boundingRect().toAlignedRect();
     physPath.translate(-physBounds.x(), -physBounds.y());
@@ -201,7 +212,6 @@ void FreehandSelector::mousePressEvent(QMouseEvent *event)
         m_path = QPainterPath();
         m_path.moveTo(m_startPoint);
         m_isDrawing = true;
-        m_finished = false;
         update();
     }
 }
@@ -225,10 +235,8 @@ void FreehandSelector::mouseReleaseEvent(QMouseEvent *event)
         // 闭合路径（连接终点到起点）
         m_path.closeSubpath();
         m_isClosed = true; // 记录状态
-        m_finished = true;
         update();
-
-        // 退出事件循环（在 selectShape 中会检测到 m_finished 为 true）
+        emit finished();
     }
 }
 
@@ -236,7 +244,6 @@ void FreehandSelector::keyPressEvent(QKeyEvent *event)
 {
     if (event->key() == Qt::Key_Escape) {
         m_path = QPainterPath();
-        m_finished = true;
-        close();
+        emit finished();
     }
 }

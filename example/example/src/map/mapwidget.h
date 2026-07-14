@@ -3,14 +3,14 @@
 
 #include <QWidget>
 
-class MapWidget : public QWidget
-{
+class MapWidget : public QWidget {
     Q_OBJECT
+
 public:
-    explicit MapWidget(QWidget *parent = nullptr);
+
+    Q_INVOKABLE explicit MapWidget(QWidget *parent = nullptr);
 
 signals:
-
 };
 
 #endif // MAPWIDGET_H

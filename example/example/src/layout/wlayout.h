@@ -9,7 +9,7 @@ class wLayout : public QWidget {
 
 public:
 
-    explicit wLayout(QWidget *parent = nullptr);
+    Q_INVOKABLE explicit wLayout(QWidget *parent = nullptr);
     Q_INVOKABLE bool changeFullScreen();
 
 signals:

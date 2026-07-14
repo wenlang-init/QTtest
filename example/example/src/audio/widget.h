@@ -24,7 +24,7 @@ class Widget : public QWidget {
 
 public:
 
-    Widget(QWidget *parent = nullptr);
+    Q_INVOKABLE Widget(QWidget *parent = nullptr);
     ~Widget();
 
 protected:

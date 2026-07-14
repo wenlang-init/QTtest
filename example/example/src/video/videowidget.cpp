@@ -13,8 +13,7 @@
 
 // #include "ffmpegvideo.h"
 
-#define qdebug qDebug().noquote() << "[" << __FILE__ << ":" << __LINE__ << "] " << \
-        __FUNCTION__ << "() "
+#define qdebug qDebug().noquote()
 
 videoWidget::videoWidget(QWidget *parent)
     : QWidget{parent}

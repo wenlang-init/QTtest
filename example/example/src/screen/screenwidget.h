@@ -63,7 +63,7 @@ class screenWidgetShow : public QWidget {
 
 public:
 
-    explicit screenWidgetShow(QWidget *parent = nullptr);
+    Q_INVOKABLE explicit screenWidgetShow(QWidget *parent = nullptr);
 };
 
 #endif // SCREENWIDGET_H

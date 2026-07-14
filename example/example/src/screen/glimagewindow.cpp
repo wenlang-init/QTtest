@@ -34,6 +34,8 @@ GLImageWindow::GLImageWindow(QWindow *parent) :
     // 请求 4.5 Core Profile
     QSurfaceFormat format;
 
+    format.setAlphaBufferSize(8); // 请求 8 位 Alpha 缓冲区 ,实现透明度显示
+    // format.setSamples(4);         // 请求 4x MSAA 抗锯齿
     format.setVersion(4, 5);
     format.setProfile(QSurfaceFormat::CoreProfile);
     setFormat(format);
@@ -74,7 +76,13 @@ void GLImageWindow::initializeGL()
 {
     initializeOpenGLFunctions(); // 加载 4.5 函数
 
-    glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+    // 启用混合，以实现透明效果
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // 置清除颜色为完全透明 (R, G, B, A) = (0, 0, 0, 0)
+    glClearColor(0.0f, 0.0f, 0.0f, 0.5f);
+
     setupShaders();
     setupGeometry();
 

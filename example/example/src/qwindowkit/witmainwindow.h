@@ -13,7 +13,7 @@ class WitMainWindow : public QMainWindow {
 
 public:
 
-    WitMainWindow(QWidget *parent = nullptr);
+    Q_INVOKABLE WitMainWindow(QWidget *parent = nullptr);
     ~WitMainWindow();
 
     enum Theme {

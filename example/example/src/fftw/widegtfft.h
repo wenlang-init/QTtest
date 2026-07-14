@@ -29,7 +29,7 @@ public:
 
     void audioCoders();
     void testAudioDecoder();
-    explicit widegtFFT(QWidget *parent = nullptr);
+    Q_INVOKABLE explicit widegtFFT(QWidget *parent = nullptr);
     ~widegtFFT();
 
 protected slots:

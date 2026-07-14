@@ -3,14 +3,14 @@
 
 #include <QWidget>
 
-class ListMessageView : public QWidget
-{
+class ListMessageView : public QWidget {
     Q_OBJECT
+
 public:
-    explicit ListMessageView(QWidget *parent = nullptr);
+
+    Q_INVOKABLE explicit ListMessageView(QWidget *parent = nullptr);
 
 signals:
-
 };
 
 #endif // LISTMESSAGEVIEW_H

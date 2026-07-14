@@ -32,6 +32,16 @@ public:
     void insertat(int     index,
                   QString imageurl,
                   QString name);
+    void setTextColor(const QColor& textColor = Qt::black);
+    void setTextColor(int           index = 0,
+                      const QColor& textColor = Qt::black);
+    void setTextFontColor(const QFont& textfont = QFont("Microsoft Yahei", 10,
+                                                        QFont::Normal),
+                          const QColor& textColor = Qt::black);
+    void setTextFontColor(int index = 0,
+                          const QFont& textfont = QFont("Microsoft Yahei", 10,
+                                                        QFont::Normal),
+                          const QColor& textColor = Qt::black);
     void removeitem(int index);
     int  get_itemcount();
 

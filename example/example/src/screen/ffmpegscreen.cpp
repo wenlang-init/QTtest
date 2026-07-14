@@ -69,7 +69,7 @@ bool ffmpegScreen::init()
     }
     avdevice_register_all();
 
-    // linux:x11grab
+    // linux:x11grab ; DXGI:ddagrab
     const AVInputFormat *m_inputFormat = av_find_input_format("gdigrab");
 
     if (m_inputFormat == nullptr) {
@@ -334,13 +334,24 @@ bool ffmpegScreen::getImage(QImage& image)
 
 void ffmpegScreen::info()
 {
-    qdebug << "avutil_version: " << avutil_version();
+    qdebug << "avcodec_version: " << avcodec_version()
+           << QString("(%1.%2.%3)")
+        .arg(AV_VERSION_MAJOR(avcodec_version()))
+        .arg(AV_VERSION_MINOR(avcodec_version()))
+        .arg(AV_VERSION_MICRO(avcodec_version()));
+    qdebug << "avutil_version: " << avutil_version()
+           << QString("(%1.%2.%3)")
+        .arg(AV_VERSION_MAJOR(avutil_version()))
+        .arg(AV_VERSION_MINOR(avutil_version()))
+        .arg(AV_VERSION_MICRO(avutil_version()));
     qdebug << "avutil_license: " <<   avutil_license();
     qdebug << "av_version: " <<       av_version_info();
     qdebug << "av_license: " <<       avutil_license();
     qdebug << "av_configuration: " << avutil_configuration();
 
-    qdebug << "codec list:\n";
+    QString qstr;
+#if 0
+    qstr = "codec list: ";
 
     for (int i = AV_CODEC_ID_NONE; i <= AV_CODEC_ID_ANULL; i++) {
         if (!avcodec_find_encoder((AVCodecID)i)) continue;
@@ -350,14 +361,13 @@ void ffmpegScreen::info()
             const AVCodec *avcode = avcodec_find_encoder_by_name(p);
 
             if (avcode) {
-                printf("<%s>", p); fflush(stdout);
+                qstr += QString("<%1>").arg(p);
             }
         }
     }
-    printf(  "\n"); fflush(stdout);
-    qdebug << "-----------------------";
-    printf("%s\n", QString::fromUtf8("没有找到:").toLocal8Bit().data());
-    fflush(stdout);
+    qdebug << qstr;
+
+    qstr =  "没有找到: ";
 
     for (int i = AV_CODEC_ID_NONE; i <= AV_CODEC_ID_ANULL; i++) {
         if (!avcodec_find_encoder((AVCodecID)i)) continue;
@@ -365,36 +375,398 @@ void ffmpegScreen::info()
         const AVCodec *avcode = avcodec_find_encoder_by_name(p);
 
         if (!avcode) {
-            printf("<%s>", p); fflush(stdout);
+            qstr += QString("<%1>").arg(p);
         }
     }
-    printf("\n"); fflush(stdout);
-
-    qdebug << "----------av_demuxer_iterate-------------";
+    qdebug << qstr;
+#endif // if 0
+    qstr = "av_demuxer_iterate list:\n";
 
     void *opaque = NULL; // 1. 初始化 opaque 为 NULL
     const AVInputFormat *fmt = NULL;
 
-    // 2. 循环迭代，直到 av_demuxer_iterate 返回 NULL
+    // 2. 循环迭代，所有解码器,直到 av_demuxer_iterate 返回 NULL
     while ((fmt = av_demuxer_iterate(&opaque))) {
         // 3. 使用获取到的 AVInputFormat 指针
         // fmt->name 是解复用器的短名称，如 "mp4", "mov"
         // fmt->long_name 是描述性名称
-        printf("%s-%s\n", fmt->name, fmt->long_name); fflush(stdout);
+        qstr += QString("<%1> : %2\n").arg(fmt->name).arg(fmt->long_name);
     }
-    printf("\n"); fflush(stdout);
+    qdebug << qstr;
 
-    qdebug << "----------av_muxer_iterate-------------";
+    qstr =  "av_muxer_iterate list:\n";
 
     opaque = NULL; // 1. 初始化 opaque 为 NULL
     const AVOutputFormat *fmto = NULL;
 
-    // 2. 循环迭代，直到 av_muxer_iterate 返回 NULL
+    // 2. 循环迭代，所有编码器,直到 av_muxer_iterate 返回 NULL
     while ((fmto = av_muxer_iterate(&opaque))) {
         // 3. 使用获取到的 AVOutputFormat 指针
         // fmt->name 是解复用器的短名称，如 "mp4", "mov"
         // fmt->long_name 是描述性名称
-        printf("%s-%s\n", fmto->name, fmto->long_name); fflush(stdout);
+        qstr += QString("<%1> : %2\n").arg(fmto->name).arg(fmto->long_name);
     }
-    printf("\n"); fflush(stdout);
+    qdebug << qstr;
+}
+
+//////////////////////////////////////////////////////
+
+AV1Encoder::AV1Encoder(const QString& outputFile,
+                       int            width,
+                       int            height,
+                       int            fps,
+                       int            crf,
+                       int            preset)
+    : m_outputFile(outputFile)
+    , m_width(width)
+    , m_height(height)
+    , m_fps(fps)
+    , m_crf(crf)
+    , m_preset(preset)
+    , m_formatCtx(nullptr)
+    , m_codecCtx(nullptr)
+    , m_stream(nullptr)
+    , m_swsCtx(nullptr)
+    , m_frame(nullptr)
+    , m_packet(nullptr)
+    , m_frameIndex(0)
+    , m_isInitialized(false)
+{}
+
+AV1Encoder::~AV1Encoder()
+{
+    flush();
+    close();
+    qDebug();
+}
+
+bool AV1Encoder::encodeFrame(const QImage& image)
+{
+    if (!m_isInitialized) {
+        if (!init()) {
+            qWarning() << "编码器未初始化";
+            return false;
+        }
+    }
+
+    // 确保图像尺寸匹配
+    if ((image.width() != m_width) || (image.height() != m_height)) {
+        qWarning() << "图像尺寸与视频尺寸不匹配";
+        return false;
+    }
+
+    // 将 QImage 转换为 BGRA 数据（FFmpeg 的 AV_PIX_FMT_BGRA 与 QImage::Format_ARGB32
+    // 内存布局一致）
+    QImage converted = image;
+
+    if (converted.format() != QImage::Format_ARGB32) {
+        converted = converted.convertToFormat(QImage::Format_ARGB32);
+
+        if (converted.isNull()) {
+            qWarning() << "图像格式转换失败";
+            return false;
+        }
+    }
+
+    // 使用 sws_scale 将 BGRA 转换为 YUV420P，直接写入 m_frame 的缓冲区
+    const uint8_t *srcData[4] = { converted.bits() };
+    int srcLinesize[4] = { static_cast<int>(converted.bytesPerLine()) };
+    sws_scale(m_swsCtx, srcData, srcLinesize, 0, m_height,
+              m_frame->data, m_frame->linesize);
+
+    // 设置时间戳（递增）
+    m_frame->pts = m_frameIndex++;
+
+    // 发送帧到编码器
+    int ret = avcodec_send_frame(m_codecCtx, m_frame);
+
+    if (ret < 0) {
+        av_strerror(ret, errbuf, sizeof(errbuf));
+        qWarning() << "发送帧到编码器失败: " << errbuf; // av_err2str(ret)
+        return false;
+    }
+
+    // 接收编码后的数据包（可能一次 send 产生多个包，循环接收）
+    while (true) {
+        ret = avcodec_receive_packet(m_codecCtx, m_packet);
+
+        if ((ret == AVERROR(EAGAIN)) || (ret == AVERROR_EOF)) {
+            break; // 需要更多帧或已结束
+        } else if (ret < 0) {
+            av_strerror(ret, errbuf, sizeof(errbuf));
+            qWarning() << "接收编码包失败: " << errbuf;
+            return false;
+        }
+
+        // 将包写入容器
+        av_packet_rescale_ts(m_packet,
+                             m_codecCtx->time_base,
+                             m_stream->time_base);
+        m_packet->stream_index = m_stream->index;
+        ret = av_interleaved_write_frame(m_formatCtx, m_packet);
+        av_packet_unref(m_packet);
+
+        if (ret < 0) {
+            av_strerror(ret, errbuf, sizeof(errbuf));
+            qWarning() << "写入包失败: " << errbuf;
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool AV1Encoder::flush()
+{
+    if (!m_isInitialized) return true;
+
+    // 发送 NULL 帧，告知编码器结束
+    int ret = avcodec_send_frame(m_codecCtx, nullptr);
+
+    if (ret < 0) {
+        av_strerror(ret, errbuf, sizeof(errbuf));
+        qWarning() << "发送 flush 帧失败: " << errbuf;
+        return false;
+    }
+
+    // 接收所有剩余包
+    while (true) {
+        ret = avcodec_receive_packet(m_codecCtx, m_packet);
+
+        if ((ret == AVERROR(EAGAIN)) || (ret == AVERROR_EOF)) {
+            break;
+        } else if (ret < 0) {
+            av_strerror(ret, errbuf, sizeof(errbuf));
+            qWarning() << "接收剩余包失败: " << errbuf;
+            return false;
+        }
+
+        av_packet_rescale_ts(m_packet,
+                             m_codecCtx->time_base,
+                             m_stream->time_base);
+        m_packet->stream_index = m_stream->index;
+        av_interleaved_write_frame(m_formatCtx, m_packet);
+        av_packet_unref(m_packet);
+    }
+
+    // 写入文件尾
+    av_write_trailer(m_formatCtx);
+
+    // 释放资源
+    close();
+    return true;
+}
+
+void AV1Encoder::close()
+{
+    if (m_packet) {
+        av_packet_free(&m_packet);
+        m_packet = nullptr;
+    }
+
+    if (m_frame) {
+        av_frame_free(&m_frame);
+        m_frame = nullptr;
+    }
+
+    if (m_swsCtx) {
+        sws_freeContext(m_swsCtx);
+        m_swsCtx = nullptr;
+    }
+
+    if (m_codecCtx) {
+        avcodec_free_context(&m_codecCtx);
+        m_codecCtx = nullptr;
+    }
+
+    if (m_formatCtx) {
+        if (m_formatCtx->pb) {
+            avio_closep(&m_formatCtx->pb);
+        }
+        avformat_free_context(m_formatCtx);
+        m_formatCtx = nullptr;
+    }
+    m_isInitialized = false;
+}
+
+bool AV1Encoder::init()
+{
+    if (m_isInitialized) return true;
+
+    // 1. 注册所有组件（FFmpeg 4.0+ 可省略，但保留兼容）
+    avdevice_register_all();
+    avformat_network_init();
+
+    // 2. 查找 AV1 编码器（优先 libsvtav1）
+    const AVCodec *codec = avcodec_find_encoder_by_name("libsvtav1");
+
+    if (!codec) {
+        codec = avcodec_find_encoder_by_name("libaom-av1");
+    }
+
+    if (!codec) {
+        qWarning() << "未找到 AV1 编码器，请确保 FFmpeg 编译时启用了 libsvtav1 或 libaom-av1";
+        return false;
+    }
+
+    // 3. 分配编码器上下文
+    m_codecCtx = avcodec_alloc_context3(codec);
+
+    if (!m_codecCtx) {
+        qWarning() << "无法分配编码器上下文";
+        return false;
+    }
+
+    // 4. 设置编码参数
+    m_codecCtx->width = m_width;
+    m_codecCtx->height = m_height;
+    m_codecCtx->time_base = AVRational{ 1, m_fps };
+    m_codecCtx->framerate = AVRational{ m_fps, 1 };
+    m_codecCtx->pix_fmt = AV_PIX_FMT_YUV420P; // AV1 常用
+    m_codecCtx->thread_count = 0;             // 自动多线程
+
+    // 设置 CRF 质量控制
+    m_codecCtx->flags |= AV_CODEC_FLAG_QSCALE;
+    m_codecCtx->global_quality = m_crf * FF_QP2LAMBDA;
+
+    // 设置 preset（通过 AVOption）
+    av_opt_set(m_codecCtx->priv_data,
+               "preset",
+               QString::number(m_preset).toUtf8().constData(),
+               0);
+
+    // 针对 libaom-av1 的额外兼容
+    if (strcmp(codec->name, "libaom-av1") == 0) {
+        // 旧版需要 experimental 标志
+        m_codecCtx->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
+    }
+
+    // 5. 打开编码器
+    if (avcodec_open2(m_codecCtx, codec, nullptr) < 0) {
+        qWarning() << "无法打开编码器";
+        avcodec_free_context(&m_codecCtx);
+        return false;
+    }
+
+    // 6. 创建输出上下文（容器格式为 MP4）
+    avformat_alloc_output_context2(&m_formatCtx,
+                                   nullptr,
+                                   "mp4",
+                                   m_outputFile.toUtf8().constData());
+
+    if (!m_formatCtx) {
+        qWarning() << "无法创建 MP4 输出上下文";
+        avcodec_free_context(&m_codecCtx);
+        return false;
+    }
+
+    // 7. 添加视频流
+    m_stream = avformat_new_stream(m_formatCtx, codec);
+
+    if (!m_stream) {
+        qWarning() << "无法创建视频流";
+        avformat_free_context(m_formatCtx);
+        m_formatCtx = nullptr;
+        avcodec_free_context(&m_codecCtx);
+        return false;
+    }
+    m_stream->id = m_formatCtx->nb_streams - 1;
+    m_stream->time_base = m_codecCtx->time_base;
+
+    // 将编码器参数复制到流
+    avcodec_parameters_from_context(m_stream->codecpar, m_codecCtx);
+
+    // 8. 打开输出文件并写入头信息
+    if (!(m_formatCtx->oformat->flags & AVFMT_NOFILE)) {
+        if (avio_open(&m_formatCtx->pb, m_outputFile.toUtf8().constData(),
+                      AVIO_FLAG_WRITE) < 0) {
+            qWarning() << "无法打开输出文件 " << m_outputFile;
+            avformat_free_context(m_formatCtx);
+            m_formatCtx = nullptr;
+            avcodec_free_context(&m_codecCtx);
+            return false;
+        }
+    }
+
+    if (avformat_write_header(m_formatCtx, nullptr) < 0) {
+        qWarning() << "写入文件头失败";
+        avio_closep(&m_formatCtx->pb);
+        avformat_free_context(m_formatCtx);
+        m_formatCtx = nullptr;
+        avcodec_free_context(&m_codecCtx);
+        return false;
+    }
+
+    // 9. 创建 SwsContext 用于颜色空间转换（BGRA -> YUV420P）
+    m_swsCtx = sws_getContext(
+        m_width, m_height, AV_PIX_FMT_BGRA,
+        m_width, m_height, AV_PIX_FMT_YUV420P,
+        SWS_BILINEAR, nullptr, nullptr, nullptr
+        );
+
+    if (!m_swsCtx) {
+        qWarning() << "无法创建颜色转换上下文";
+        close();
+        return false;
+    }
+
+    // 10. 分配一个 AVFrame 用于存放转换后的 YUV 帧（复用）
+    m_frame = av_frame_alloc();
+
+    if (!m_frame) {
+        qWarning() << "无法分配 AVFrame";
+        close();
+        return false;
+    }
+    m_frame->format = AV_PIX_FMT_YUV420P;
+    m_frame->width = m_width;
+    m_frame->height = m_height;
+
+    if (av_frame_get_buffer(m_frame, 32) < 0) {
+        qWarning() << "无法为 AVFrame 分配缓冲区";
+        close();
+        return false;
+    }
+
+    // 11. 分配 AVPacket（复用）
+    m_packet = av_packet_alloc();
+
+    if (!m_packet) {
+        qWarning() << "无法分配 AVPacket";
+        close();
+        return false;
+    }
+
+    m_isInitialized = true;
+    return true;
+}
+
+#include <QPainter>
+int AV1Encoder::test()
+{
+    const int  width = 640, height = 480, fps = 30;
+    AV1Encoder encoder("output_av1.mp4", width, height, fps, 30 /* CRF */,
+                       8 /* preset */);
+
+    // 模拟生成连续帧（例如旋转的矩形）
+    QImage   frame(width, height, QImage::Format_ARGB32);
+    QPainter painter(&frame);
+    int angle = 0;
+
+    for (int i = 0; i < 300; ++i) {
+        frame.fill(Qt::black);
+        painter.setBrush(Qt::red);
+        painter.translate(width / 2, height / 2);
+        painter.rotate(angle);
+        painter.drawRect(-100, -100, 200, 200);
+        painter.resetTransform();
+        angle += 2;
+
+        if (!encoder.encodeFrame(frame)) {
+            break;
+        }
+    }
+
+    encoder.flush();
+    return 0;
 }

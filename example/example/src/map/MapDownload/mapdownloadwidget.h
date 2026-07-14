@@ -16,7 +16,7 @@ class MapDownLoadWidget : public QWidget {
 
 public:
 
-    MapDownLoadWidget(QWidget *parent = nullptr);
+    Q_INVOKABLE MapDownLoadWidget(QWidget *parent = nullptr);
     ~MapDownLoadWidget();
 
 private slots:

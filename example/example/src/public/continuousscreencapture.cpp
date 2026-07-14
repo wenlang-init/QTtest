@@ -221,7 +221,7 @@ void ContinuousScreenCapture::captureLoop()
         // 捕获一帧
         IDXGIResource *pDesktopResource = nullptr;
         DXGI_OUTDUPL_FRAME_INFO frameInfo;
-        HRESULT hr = m_pDuplication->AcquireNextFrame(500,
+        HRESULT hr = m_pDuplication->AcquireNextFrame(0,
                                                       &frameInfo,
                                                       &pDesktopResource);
 
@@ -334,50 +334,18 @@ void ContinuousScreenCapture::captureLoop()
                 if (isShowMouse && !m_pointerData.image.isNull()) {
                     int posX = mouseX - left + m_pointerData.hotX;
                     int posY = mouseY - top + m_pointerData.hotY;
-                    QPainter painter(&result);
 
                     if (m_pointerData.isMaskedColor)
                     {
-                        int yStart = posY;
-                        int yHeight = m_pointerData.image.height();
-                        int xStart = posX;
-                        int xWidth = m_pointerData.image.width();
-                        const int bytesPerPixel = 4;
-
-                        if (yStart < 0) yStart = 0;
-
-                        if (xStart < 0) xStart = 0;
-
-                        for (int y = 0; y < yHeight; ++y) {
-                            if (y + yStart >= result.height()) break;
-                            const quint8 *srcRow =
-                                m_pointerData.image.scanLine(y);
-                            quint8 *dstRow = result.scanLine(y + yStart) +
-                                             xStart * bytesPerPixel;
-
-                            for (int x = 0; x < xWidth; x++) {
-                                if (x + xStart >= result.width()) break;
-                                const quint8 *src = srcRow + x * bytesPerPixel;
-                                quint8 *dst = dstRow + x * bytesPerPixel;
-
-                                if (src[3] == 0) {
-                                    dst[0] = src[0];
-                                    dst[1] = src[1];
-                                    dst[2] = src[2];
-                                } else {
-                                    // 0xff
-                                    dst[0] ^= src[0];
-                                    dst[1] ^= src[1];
-                                    dst[2] ^= src[2];
-                                }
-                            }
-                        }
-
-                        // painter.drawImage(posX, posY, m_pointerData.image);
+                        drawImageFromMaskedColorImage(result,
+                                                      m_pointerData.image,
+                                                      posX,
+                                                      posY);
                     } else {
+                        QPainter painter(&result);
                         painter.drawImage(posX, posY, m_pointerData.image);
+                        painter.end();
                     }
-                    painter.end();
                 }
                 emit frameCaptured(result);
             }
@@ -392,6 +360,47 @@ void ContinuousScreenCapture::captureLoop()
 
         count++;
     }
+}
+
+bool ContinuousScreenCapture::drawImageFromMaskedColorImage(QImage      & result,
+                                                            const QImage& simage,
+                                                            int           posX,
+                                                            int           posY)
+{
+    int yStart = posY;
+    int yHeight = simage.height();
+    int xStart = posX;
+    int xWidth = simage.width();
+    const int bytesPerPixel = 4;
+
+    if (yStart < 0) yStart = 0;
+
+    if (xStart < 0) xStart = 0;
+
+    for (int y = 0; y < yHeight; ++y) {
+        if (y + yStart >= result.height()) break;
+        const quint8 *srcRow = simage.scanLine(y);
+        quint8 *dstRow = result.scanLine(y + yStart) +
+                         xStart * bytesPerPixel;
+
+        for (int x = 0; x < xWidth; x++) {
+            if (x + xStart >= result.width()) break;
+            const quint8 *src = srcRow + x * bytesPerPixel;
+            quint8 *dst = dstRow + x * bytesPerPixel;
+
+            if (src[3] == 0) {
+                dst[0] = src[0];
+                dst[1] = src[1];
+                dst[2] = src[2];
+            } else {
+                // 0xff
+                dst[0] ^= src[0];
+                dst[1] ^= src[1];
+                dst[2] ^= src[2];
+            }
+        }
+    }
+    return true;
 }
 
 bool ContinuousScreenCapture::getPointerShape(

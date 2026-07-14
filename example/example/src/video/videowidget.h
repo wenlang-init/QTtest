@@ -11,7 +11,7 @@ class videoWidget : public QWidget {
 
 public:
 
-    explicit videoWidget(QWidget *parent = nullptr);
+    Q_INVOKABLE explicit videoWidget(QWidget *parent = nullptr);
     ~videoWidget();
 
 protected:

@@ -30,6 +30,51 @@ FuncHelper::FuncHelper(QObject *parent)
             &FuncHelper::slotGetFileHash);
 }
 
+#if defined(Q_OS_WINDOWS)
+# include <windows.h>
+# include <stdio.h>
+void FuncHelper::AttachConsoleAndRedirect(bool onlyShow)
+{
+    // 尝试附加到父进程的控制台（如果是从cmd启动的，这会成功）
+    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+        // 重定向 stdout/stderr 到刚刚附加的控制台
+        FILE *fp;
+        freopen_s(&fp, "CONOUT$", "w", stdout);
+        freopen_s(&fp, "CONOUT$", "w", stderr);
+
+        // 使 C++ 标准流与 C 标准流同步，确保 qDebug/cout 能输出
+        std::ios::sync_with_stdio();
+
+        qDebug() << "检测到命令行环境，已附加到现有控制台。";
+    } else {
+        // 如果没有父控制台（双击运行），AttachConsole 会失败
+        // 此时我们可以选择什么都不做（静默运行），或者手动创建一个新控制台用于调试
+
+        if (onlyShow) {
+            if (AllocConsole()) {
+                FILE *fp;
+                freopen_s(&fp, "CONOUT$", "w", stdout);
+                freopen_s(&fp, "CONOUT$", "w", stderr);
+                std::ios::sync_with_stdio();
+                system("color 0");
+                qDebug() << "调试模式：已创建新控制台。";
+            }
+        } else {
+            // # ifdef _DEBUG
+            // if (AllocConsole()) {
+            //     FILE *fp;
+            //     freopen_s(&fp, "CONOUT$", "w", stdout);
+            //     freopen_s(&fp, "CONOUT$", "w", stderr);
+            //     std::ios::sync_with_stdio();
+            //     system("color 0");
+            //     qDebug() << "调试模式：已创建新控制台。";
+            // }
+            // # endif // ifdef _DEBUG
+        }
+    }
+}
+
+#endif // if defined(Q_OS_WINDOWS)
 void FuncHelper::slotGetFileHash(QString filePath, int bhash) {
     QString result;
     QFile   file(filePath);

@@ -129,6 +129,37 @@ void DeskTopWidget::insertat(int index, QString imageurl, QString name)
     set_btn_current(0);
 }
 
+void DeskTopWidget::setTextColor(const QColor& textColor)
+{
+    for (int i = 0; i < itemlist.count(); i++) {
+        itemlist[i]->settext_color(textColor);
+    }
+}
+
+void DeskTopWidget::setTextColor(int index, const QColor& textColor)
+{
+    if ((index >= 0) && (index < itemlist.count())) {
+        itemlist[index]->settext_color(textColor);
+    }
+}
+
+void DeskTopWidget::setTextFontColor(const QFont & textfont,
+                                     const QColor& textColor)
+{
+    for (int i = 0; i < itemlist.count(); i++) {
+        itemlist[i]->settext_fontcolor(textfont, textColor);
+    }
+}
+
+void DeskTopWidget::setTextFontColor(int           index,
+                                     const QFont & textfont,
+                                     const QColor& textColor)
+{
+    if ((index >= 0) && (index < itemlist.count())) {
+        itemlist[index]->settext_fontcolor(textfont, textColor);
+    }
+}
+
 void DeskTopWidget::removeitem(int index)
 {
     if ((index < 0) || (index >= itemlist.count())) return;

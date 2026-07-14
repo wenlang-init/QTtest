@@ -73,7 +73,17 @@ void CustomBtn::settext(QString text)
     this->repaint();
 }
 
-void CustomBtn::settext_fontcolor(QFont textfont, QColor textColor)
+void CustomBtn::settext_color(const QColor& textColor)
+{
+    QPalette pe;
+
+    pe.setColor(QPalette::WindowText, textColor);
+    label_text->setPalette(pe);
+    label_text->repaint();
+}
+
+void CustomBtn::settext_fontcolor(const QFont & textfont,
+                                  const QColor& textColor)
 {
     QPalette pe;
 

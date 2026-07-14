@@ -9,7 +9,7 @@ class qmlWidgetLoader : public QWidget {
 
 public:
 
-    explicit qmlWidgetLoader(QWidget *parent = nullptr);
+    Q_INVOKABLE explicit qmlWidgetLoader(QWidget *parent = nullptr);
     ~qmlWidgetLoader();
 
 protected:

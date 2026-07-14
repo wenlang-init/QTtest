@@ -1,4 +1,3 @@
-#include "mainwindow.h"
 #include <QDebug>
 #include <QApplication>
 #include <QLocale>
@@ -9,32 +8,28 @@
 #include <QOpenGLWidget>
 #include <QGraphicsView>
 #include <QGraphicsProxyWidget>
-#if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
-# include "src/fftw/widegtfft.h"
-#endif // if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
-#include "src/messageWidget/listmessageview.h"
-#include "src/video/videowidget.h"
-#include "src/graphics/graphicswidget.h"
-#include "src/qmlList/listw.h"
-#include "src/audio/widget.h"
-#include "src/layout/wlayout.h"
-#include "src/souyin/shouyinw.h"
+
 #include "homewidget.h"
+#include "src/public/funchelper.h"
 
 // #include "input_method_widget.h"
-#ifdef _MSC_VER
-# include "paddle_inference_api.h"
-#endif // ifdef _MSC_VER
 
-// #include "lognone.h"
+// #if defined(_MSC_VER) && defined(QT_NO_DEBUG)
+// # include "paddle_inference_api.h"
+// #endif
+
+#define USEDCXXLOG
+#include <cxxlog.h>
+#include <lognone.h>
+
 #if defined(Q_OS_WINDOWS)
 # include "QBreakpadHandler.h"
 #endif // if defined(Q_OS_WINDOWS)
-#include "cxxlog.h"
 
+#if 0
 void paddletest()
 {
-#ifdef _MSC_VER
+# ifdef _MSC_VER
 
     // 创建默认配置对象
     paddle_infer::Config config;
@@ -123,12 +118,13 @@ void paddletest()
     std::vector<float> output_data;
     output_data.resize(output_size);
     output_tensor->CopyToCpu(output_data.data());
-#endif // ifdef _MSC_VER
+# endif // ifdef _MSC_VER
 }
+
+#endif  // if 0
 
 #if defined(_WIN32) || defined(_WIN64)
 # include <windows.h>
-
 BOOL WINAPI HandlerRoutine(DWORD dwCtrlType) {
     DEBUG_LOG_CXX("vvvvvvvvvvvxxxxxxxxxxxxxx %d\n", dwCtrlType);
 
@@ -204,12 +200,13 @@ void exitAT() {
 
 int main(int argc, char *argv[])
 {
-#if (defined(_WIN32) || defined(_WIN64)) && defined(QT_DEBUG)
-    system("color 0");
-#endif // if (defined(_WIN32) || defined(_WIN64)) && defined(QT_DEBUG)
-
-    // REDIRECT_QTMESSAGE_LOG(nullptr);
+    FuncHelper::AttachConsoleAndRedirect();
+#ifdef USEDCXXLOG
     REDIRECT_QTMESSAGE_LOG_CXX(nullptr);
+#else // ifdef USEDCXXLOG
+    REDIRECT_QTMESSAGE_LOG(nullptr);
+#endif // ifdef USEDCXXLOG
+
 #if defined(_WIN32) || defined(_WIN64)
 
     // 第二个参数FALSE为卸载钩子
@@ -282,14 +279,12 @@ int main(int argc, char *argv[])
     }
 #endif // if 0
 
-    // MainWindow *aaa = nullptr; aaa->show();
-
     QString logdir = QCoreApplication::applicationDirPath() + "/log";
     qDebug() << logdir << logdir.toLocal8Bit().data();
-
-    CxxLog::getInstance().initLog(logdir.toLocal8Bit().toStdString(),
-                                  1000,
-                                  1024 * 1024 * 10);
+#ifdef USEDCXXLOG
+    std::string logdirstring = logdir.toLocal8Bit().toStdString();
+    CxxLog::getInstance().initLog(logdirstring,
+                                  1000, 1024 * 1024 * 10);
     CxxLog::getInstance().setLogLevel(CxxLog::LOG_TYPE_DEBUG);
     CxxLog::getInstance().setFileLogLevel(CxxLog::LOG_TYPE_DEBUG);
     CxxLog::getInstance().setPrint(true);
@@ -305,21 +300,21 @@ int main(int argc, char *argv[])
     // CRITICAL_LOG_CXX("222222222222d\n");
     // FATAL_LOG_CXX("12345mmmmmmmmmmmm\n");
     // INFO_LOG_CXX("12345yyyyyyyyyyyyyyyyyyyyyyyy\n");
+#else // ifdef USEDCXXLOG
 
     // char buf[1024];
     // if (GET_CURRENTPATH(buf, sizeof(buf))) {
     //     INFO_PRINT_LOG("11111111111111111111 %s\n", buf);
     // }
 
+    initLog(logdir.toLocal8Bit().data(), 1000, 1024 * 1024 * 10);
+    setLogLevel(LOG_TYPE_ENUM_DEBUG);
 
-    // initLog(logdir.toLocal8Bit().data(), 1000, 1024 * 1024 * 10);
-    // setLogLevel(LOG_TYPE_ENUM_DEBUG);
-
-    // // setLogPrint(0);
-    // PRINT_LOG(LOG_TYPE_ENUM_DEBUG, "ccccccccccccccccccccxxxxx\n");
-    // INFO_PRINT_LOG("bbbbbbbbbbbbbbbbbbbb\n");
-    // INFO_LOG("ttttttttttttttttttttttttt\n");
-
+    // setLogPrint(0);
+    PRINT_LOG(LOG_TYPE_ENUM_DEBUG, "ccccccccccccccccccccxxxxx\n");
+    INFO_PRINT_LOG("bbbbbbbbbbbbbbbbbbbb\n");
+    INFO_LOG("ttttttttttttttttttttttttt\n");
+#endif // ifdef USEDCXXLOG
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();
 
@@ -327,9 +322,14 @@ int main(int argc, char *argv[])
         const QString baseName = "example_" + QLocale(locale).name();
 
         if (translator.load(":/i18n/" + baseName)) {
+            qDebug() << baseName;
             a.installTranslator(&translator);
             break;
         }
+    }
+
+    if (translator.load("translations/qt_zh_CN.qm")) {
+        a.installTranslator(&translator);
     }
 
     qInfo().noquote() << qApp->applicationFilePath()
@@ -341,101 +341,31 @@ int main(int argc, char *argv[])
 
     // SETAUTOSHOW_INPUT_METHOD_WIDGET();
 
-    if (argc >= 2) {
-        QString str = argv[1];
+    // QStringList families = QFontDatabase::families();
+    // qDebug() << families;
 
-        if (str == "1") {
-        #if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
-            widegtFFT *w = new widegtFFT;
-            w->resize(600, 600);
-            w->show();
-            w->setAttribute(Qt::WA_DeleteOnClose, true);
-            QObject::connect(w, &widegtFFT::destroyed, [&]() {
-                qDebug() << "widegtFFT -------" << w;
-            });
-        #endif // if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
-        } else if (str == "2") {
-            videoWidget *w = new videoWidget;
-            w->resize(600, 600);
-            w->show();
-            w->setAttribute(Qt::WA_DeleteOnClose, true);
-            QObject::connect(w, &videoWidget::destroyed, [&]() {
-                qDebug() << "videoWidget -------" << w;
-            });
-        } else if (str == "3") {
-            ListMessageView *w = new ListMessageView;
-            w->resize(600, 600);
-            w->show();
-            w->setAttribute(Qt::WA_DeleteOnClose, true);
-            QObject::connect(w, &ListMessageView::destroyed, [&]() {
-                qDebug() << "ListMessageView -------" << w;
-            });
-        } else if (str == "4") {
-            GraphicsWidget *w = new GraphicsWidget;
-            w->resize(600, 600);
-            w->show();
-            w->setAttribute(Qt::WA_DeleteOnClose, true);
-            QObject::connect(w, &GraphicsWidget::destroyed, [&]() {
-                qDebug() << "GraphicsWidget -------" << w;
-            });
-        } else if (str == "5") {
-            ListW *w = new ListW;
-            w->resize(600, 600);
-            w->show();
-            w->setAttribute(Qt::WA_DeleteOnClose, true);
-            QObject::connect(w, &ListW::destroyed, [&]() {
-                qDebug() << "ListW -------" << w;
-            });
-        } else if (str == "6") {
-            Widget *w = new Widget;
-            w->resize(600, 600);
-            w->show();
-            w->setAttribute(Qt::WA_DeleteOnClose, true);
-            QObject::connect(w, &Widget::destroyed, [&]() {
-                qDebug() << "Widget -------" << w;
-            });
-        } else if (str == "7") {
-            wLayout *w = new wLayout;
-            w->resize(600, 600);
-            w->show();
-            w->setAttribute(Qt::WA_DeleteOnClose, true);
-            QObject::connect(w, &wLayout::destroyed, [&]() {
-                qDebug() << "wLayout -------" << w;
-            });
-        } else if (str == "8") {
-            ShouYinW *w = new ShouYinW;
-            w->resize(600, 600);
-            w->show();
-            w->setAttribute(Qt::WA_DeleteOnClose, true);
-            QObject::connect(w, &ShouYinW::destroyed, [&]() {
-                qDebug() << "ShouYinW -------" << w;
-            });
-        } else {
-            MainWindow *w = new MainWindow;
-            w->show();
-            w->setAttribute(Qt::WA_DeleteOnClose, true);
-            QObject::connect(w, &MainWindow::destroyed, [&]() {
-                qDebug() << "MainWindow -------" << w;
-            });
-        }
-    } else {
-        homewidget *w = new homewidget;
-        w->show();
-        w->resize(600, 600);
-        w->setAttribute(Qt::WA_DeleteOnClose, true);
-        QObject::connect(w, &homewidget::destroyed, [&]() {
-            qDebug() << "homewidget -------" << w;
-        });
-    }
+    // QColor   col(123, 22, 11);
+    // QPalette pe;
+    // pe.setColor(QPalette::WindowText, col);
+    // a.setPalette(pe);
+    // a.setFont(QFont("幼圆"));
+
+    homewidget *w = new homewidget;
+    w->show();
+    w->resize(600, 600);
+    w->setAttribute(Qt::WA_DeleteOnClose, true);
+    QObject::connect(w, &homewidget::destroyed, [&]() {
+        qDebug() << "homewidget -------" << w;
+    });
 
     // paddletest();
 
     int ret = a.exec();
-
-    // INFO_LOG("stop status=%d\n", ret);
-    // destinyLog();
-    // INFO_PRINT_LOG("while exit\n");
-
+#ifndef USEDCXXLOG
+    INFO_LOG("stop status=%d\n", ret);
+    destinyLog();
+    INFO_PRINT_LOG("while exit\n");
+#endif // ifndef USEDCXXLOG
     INFO_LOG_CXX("stop status=%d\n", ret);
 
     return ret; // QCoreApplication::exec();

@@ -20,15 +20,18 @@ protected:
     void keyPressEvent(QKeyEvent *event) override;
 
     struct  widgetItem {
-        QWidget *widget;
-        QString  name;
-        QString  imageurl;
+        QWidget           *widget;
+        QString            name;
+        QString            imageurl;
+        const QMetaObject *metaObject;
         widgetItem() {
             widget = nullptr;
+            metaObject = nullptr;
         }
     };
 
     struct  desktopItem {
+        QString lnkName;
         QString name;
         QString fname;
         QPixmap pixmap;
@@ -40,8 +43,8 @@ protected slots:
 
 private:
 
-    QList<widgetItem>m_widgetList;
-    QList<desktopItem>m_desktopList;
+    QVector<widgetItem>m_widgetList;
+    QVector<desktopItem>m_desktopList;
     DeskTopWidget *desktopwidget;
 };
 #endif // ifndef HOMEWIDGET_H

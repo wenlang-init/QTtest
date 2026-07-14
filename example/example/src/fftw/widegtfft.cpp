@@ -342,7 +342,8 @@ widegtFFT::widegtFFT(QWidget *parent) :
                                               bitRate,
                                               m_format.channelCount());
             }
-            ui->label->setText(m_saveFileName);
+            ui->label->setText(m_saveFileName
+                               .split("/", Qt::SkipEmptyParts).last());
         } else {
             if (ui->checkBoxsavepcm->isChecked()) {
                 m_savePCMFile.close();
@@ -990,7 +991,7 @@ void widegtFFT::initPlot() {
                     fmo.saveToWavEnd();
                 }
                 ui->label->setText(FileName);
-                strtime = FileName.split("/").last();
+                strtime = FileName.split("/", Qt::SkipEmptyParts).last();
             }
         }
 

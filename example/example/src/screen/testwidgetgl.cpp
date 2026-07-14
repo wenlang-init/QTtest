@@ -7,7 +7,9 @@
 #include <QPushButton>
 #include <QCheckBox>
 #include <QLabel>
+#include <QSpinBox>
 #include <QPaintEvent>
+#include <QFileDialog>
 #include <src/screen/ffmpegscreen.h>
 #include <windows.h>
 #include <src/public/dxgigetscreen.h>
@@ -15,19 +17,44 @@
 #include "regionselector.h"
 #include "freehandselector.h"
 
-#define USEDOPENGLWINDOW
+// #include <src/public/AVEncoder.h>
+
+// #define USEDOPENGLWINDOW
 
 TestWidgetGL::TestWidgetGL(QWidget *parent)
     : QWidget{parent}
 {
+#ifndef USEDOPENGLWINDOW
+
+    // setWindowFlags(Qt::FramelessWindowHint);
+    setAttribute(Qt::WA_TranslucentBackground);
+#endif // ifndef USEDOPENGLWINDOW
     QComboBox   *combox = new QComboBox(this);
     QPushButton *pushbotton = new QPushButton(this);
     QPushButton *pushbottonrect = new QPushButton(this);
     QPushButton *pushbottonscreen = new QPushButton(this);
     QCheckBox   *checkbox = new QCheckBox(this);
+    QPushButton *pushbottonSaveAv1 = new QPushButton(this);
+    QCheckBox   *checkboxUsedUpdate = new QCheckBox(this);
+    QSpinBox    *spinBox = new QSpinBox(this);
+    checkboxshow = new QCheckBox(this);
+    spinBoxFps = new QSpinBox(this);
+    spinBox->setToolTip("保存帧率");
+    spinBox->setMaximum(10000);
+    spinBox->setMinimum(1);
+    spinBox->setValue(30);
+    spinBoxFps->setToolTip("最大帧率");
+    spinBoxFps->setMaximum(1000);
+    spinBoxFps->setMinimum(1);
+    spinBoxFps->setValue(1000);
+    checkboxshow->setText("显示");
+    checkboxshow->setChecked(true);
 
     labelfps = new QLabel(this);
     checkbox->setText("使用DXGI");
+    pushbottonSaveAv1->setText("保存为视频(AV1)");
+    checkboxUsedUpdate->setText("仅用最新");
+    checkboxUsedUpdate->setChecked(true);
     pushbotton->setText("刷新");
     pushbottonrect->setText("选择区域");
     pushbottonscreen->setText("选择任意区域");
@@ -38,18 +65,28 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
     label->setWordWrap(true); // 自动换行
     label->adjustSize();      // 自适应大小
     QHBoxLayout *hlayout = new QHBoxLayout;
+    QHBoxLayout *hlayout1 = new QHBoxLayout;
     hlayout->setContentsMargins(0, 0, 0, 0);
+    hlayout1->setContentsMargins(0, 0, 0, 0);
     hlayout->addWidget(combox);
     hlayout->addWidget(pushbotton);
     hlayout->addWidget(pushbottonrect);
     hlayout->addWidget(pushbottonscreen);
-    hlayout->addWidget(checkbox);
     hlayout->addWidget(labelfps);
+
+    hlayout1->addWidget(checkboxshow);
+    hlayout1->addWidget(spinBoxFps);
+    hlayout1->addWidget(checkbox);
+    hlayout1->addWidget(pushbottonSaveAv1);
+    hlayout1->addWidget(checkboxUsedUpdate);
+    hlayout1->addWidget(spinBox);
+
 
     QVBoxLayout *vlayout = new QVBoxLayout(this);
     vlayout->setContentsMargins(0, 0, 0, 0);
     vlayout->addWidget(label);
     vlayout->addLayout(hlayout);
+    vlayout->addLayout(hlayout1);
 
 
 #ifdef USEDOPENGLWINDOW
@@ -59,6 +96,9 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
             &TestWidgetGL::loadImage,
             m_glImageWindow,
             &GLImageWindow::loadImage);
+
+    // windows 嵌入 widget 透明不能有效设置
+    // m_glImageWindow->resize(600, 600); m_glImageWindow->show();
     QWidget *widget = createWindowContainer(m_glImageWindow, this);
     vlayout->addWidget(widget);
 #else // ifdef USEDOPENGLWINDOW
@@ -74,13 +114,76 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
     connect(checkbox, &QCheckBox::checkStateChanged, this, [ = ]
     {
         if (m_ffmscreen) {
-            m_ffmscreen->deleteLater();
+            delete m_ffmscreen;
             m_ffmscreen = nullptr;
         }
 
         if (m_capturer) {
             delete m_capturer;
             m_capturer = nullptr;
+        }
+        resetSaveObject();
+    });
+    connect(pushbottonSaveAv1, &QPushButton::clicked, this, [ = ]() {
+        QString fileNames = QFileDialog::getSaveFileName(this,
+                                                         QStringLiteral("保存"),
+                                                         "./",
+                                                         QStringLiteral(
+                                                             "(*.mp4)"));
+
+        if (fileNames.isEmpty()) return;
+
+        if (QFile::exists(fileNames)) {
+            // 如果还在处理，这里不允许覆盖
+            for (auto it = m_saveAV1Map.constBegin();
+                 it != m_saveAV1Map.constEnd();
+                 ++it) {
+                if (it.value() == fileNames) {
+                    return;
+                }
+            }
+        }
+
+        if (m_saveAV1FromQImage) {
+            m_saveAV1FromQImage->stop();
+            m_saveAV1FromQImage = nullptr;
+        }
+
+        if ((m_imageWidth > 0) && (m_imageHeight > 0)) {
+            m_saveAV1FromQImage = new SaveAV1FromQImage(fileNames,
+                                                        m_imageWidth,
+                                                        m_imageHeight,
+                                                        spinBox->value());
+            m_saveAV1Map.insert(m_saveAV1FromQImage, fileNames);
+            m_saveAV1FromQImage->usedUpdate(checkboxUsedUpdate->isChecked());
+            connect(this, &TestWidgetGL::saveImage,
+                    this, [ = ](const QImage& image) {
+                if (m_saveAV1FromQImage) m_saveAV1FromQImage->addImage(image);
+            });
+            connect(m_saveAV1FromQImage, &SaveAV1FromQImage::finish, this,
+                    [ = ]() {
+                SaveAV1FromQImage *sam =
+                    qobject_cast<SaveAV1FromQImage *>(sender());
+
+                if (m_saveAV1Map.contains(sam)) {
+                    m_saveAV1Map.remove(sam);
+                }
+                sam->quit();
+
+                // sam->wait();
+                // sam->deleteLater();
+            });
+            connect(m_saveAV1FromQImage, &SaveAV1FromQImage::finished,
+                    m_saveAV1FromQImage, &SaveAV1FromQImage::deleteLater);
+
+            m_saveAV1FromQImage->start();
+            qDebug() << fileNames << m_imageWidth << m_imageHeight;
+        }
+    });
+    connect(checkboxUsedUpdate, &QCheckBox::checkStateChanged, this, [ = ]
+    {
+        if (m_saveAV1FromQImage) {
+            m_saveAV1FromQImage->usedUpdate(checkboxUsedUpdate->isChecked());
         }
     });
 
@@ -131,6 +234,7 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
             FreehandSelector fselector;
             QImage image = fselector.selectShapeScreen();
             emit loadImage(image);
+            image.save("./test.png");
             return;
         }
 
@@ -224,7 +328,7 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
 TestWidgetGL::~TestWidgetGL()
 {
     if (m_ffmscreen) {
-        m_ffmscreen->deleteLater();
+        delete m_ffmscreen;
     }
 
     if (m_capturer) {
@@ -232,6 +336,8 @@ TestWidgetGL::~TestWidgetGL()
     }
 
     if (m_glImageWindow) delete m_glImageWindow;
+
+    if (m_saveAV1FromQImage) m_saveAV1FromQImage->stop();
 }
 
 void TestWidgetGL::loaderImageFFmpeg(const QRect& m_rect)
@@ -269,17 +375,27 @@ void TestWidgetGL::loaderImageFFmpeg(const QRect& m_rect)
         delete m_ffmscreen;
         m_ffmscreen = nullptr;
     }
+    resetSaveObject();
 
     if (!m_ffmscreen) {
         m_ffmscreen = new ffmpegScreen;
+
         connect(m_ffmscreen, &ffmpegScreen::gotFrame, this,
                 [ = ](QImage image) {
+            m_image = image;
+            m_imageWidth = m_image.width();
+            m_imageHeight = m_image.height();
+
             if (m_isPath) {
                 qreal scaleFactor = QGuiApplication::primaryScreen()->devicePixelRatio();
-                image = FreehandSelector::fromPath(image, m_path, scaleFactor);
+                m_image = FreehandSelector::fromPath(m_image, m_path,
+                                                     scaleFactor);
             }
-            setImageInfo(image, false);
-            emit loadImage(image);
+            setImageInfo(m_image, false);
+
+            if (checkboxshow->isChecked()) emit loadImage(m_image);
+
+            if (m_saveAV1FromQImage) emit saveImage(m_image);
 
             // update();
         });
@@ -288,7 +404,7 @@ void TestWidgetGL::loaderImageFFmpeg(const QRect& m_rect)
     // QString hwndstr = "hwnd=" + QString::number((quintptr)hwnd, 10);
     m_ffmscreen->stopwork();
     m_ffmscreen->initparam("desktop",
-                           "25",
+                           QString::number(spinBoxFps->value()),
                            QString::number(x),
                            QString::number(y),
                            QString("%1x%2").arg(w).arg(h)
@@ -300,18 +416,24 @@ void TestWidgetGL::loaderImageDXGI(const QRect& m_rect, HWND hwnd, bool ishwnd)
 {
     if (!m_capturer) {
         m_capturer = new ContinuousScreenCapture(hwnd);
+        resetSaveObject();
 
-        // m_capturer->setLowFpsMode(true, 15);
         connect(m_capturer, &ContinuousScreenCapture::frameCaptured,
                 this, [this](const QImage& img) {
-            QImage image = img;
+            m_image = img;
+            m_imageWidth = m_image.width();
+            m_imageHeight = m_image.height();
 
             if (m_isPath) {
                 qreal scaleFactor = QGuiApplication::primaryScreen()->devicePixelRatio();
-                image = FreehandSelector::fromPath(image, m_path, scaleFactor);
+                m_image = FreehandSelector::fromPath(m_image, m_path,
+                                                     scaleFactor);
             }
-            setImageInfo(image, false);
-            emit loadImage(image);
+            setImageInfo(m_image, false);
+
+            if (checkboxshow->isChecked()) emit loadImage(m_image);
+
+            if (m_saveAV1FromQImage) emit saveImage(m_image);
 
             // update();
         });
@@ -326,6 +448,7 @@ void TestWidgetGL::loaderImageDXGI(const QRect& m_rect, HWND hwnd, bool ishwnd)
                                   m_rect.width(),
                                   m_rect.height());
     }
+    m_capturer->setLowFpsMode(true, spinBoxFps->value());
 }
 
 void TestWidgetGL::setImageInfo(QImage& image, bool showsy)
@@ -363,6 +486,19 @@ void TestWidgetGL::paintEvent(QPaintEvent *event)
         // 在这里执行绘制操作
         QPainter painter(this);
 
+        {
+            QPixmap pixmap = QPixmap::fromImage(m_image)
+                             .scaled(rect().size(),
+                                     Qt::KeepAspectRatio, // 保持比例缩放
+                                     Qt::SmoothTransformation
+                                     );
+            int x = (rect().size().width() - pixmap.width()) / 2;
+            int y = (rect().size().height() - pixmap.height()) / 2;
+
+            // painter.setRenderHint(QPainter::Antialiasing, true);
+            painter.drawPixmap(x, y, pixmap.width(), pixmap.height(), pixmap);
+        }
+
         // 设置字体和颜色
         QFont font("Arial", 30);
         painter.setFont(font);
@@ -374,5 +510,16 @@ void TestWidgetGL::paintEvent(QPaintEvent *event)
         painter.drawText(QPointF(50, 50), str);
     } else {
         QWidget::paintEvent(event); // 其他事件交给基类处理
+    }
+}
+
+void TestWidgetGL::resetSaveObject()
+{
+    m_imageWidth = -1;
+    m_imageHeight = -1;
+
+    if (m_saveAV1FromQImage) {
+        m_saveAV1FromQImage->stop();
+        m_saveAV1FromQImage = nullptr;
     }
 }

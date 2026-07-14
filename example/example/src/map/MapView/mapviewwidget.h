@@ -12,7 +12,7 @@ class MapViewWidget : public QWidget {
 
 public:
 
-    MapViewWidget(QWidget *parent = nullptr);
+    Q_INVOKABLE MapViewWidget(QWidget *parent = nullptr);
     ~MapViewWidget();
 
 private slots:

@@ -118,6 +118,10 @@ public:
 private:
 
     void captureLoop(); // 循环体（在单独线程中运行）
+    bool drawImageFromMaskedColorImage(QImage      & result,
+                                       const QImage& simage,
+                                       int           posX,
+                                       int           posY);
     bool getPointerShape(const DXGI_OUTDUPL_FRAME_INFO& frameInfo,
                          IDXGIOutputDuplication        *pDuplication,
                          PointerData                  & result);

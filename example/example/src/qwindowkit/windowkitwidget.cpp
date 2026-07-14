@@ -3,7 +3,6 @@
 #include <QFile>
 #include <QStyle>
 #include <QWKWidgets/widgetwindowagent.h>
-#include <widgetframe/windowbar.h>
 #include <widgetframe/windowbutton.h>
 
 WindowKitWidget::WindowKitWidget(QWidget *parent)
@@ -59,7 +58,7 @@ WindowKitWidget::WindowKitWidget(QWidget *parent)
     titleLabel->setAlignment(Qt::AlignCenter);
     titleLabel->setObjectName(QStringLiteral("win-title-label"));
 
-    QWK::WindowBar *windowBar = new QWK::WindowBar(this);
+    windowBar = new QWK::WindowBar(this);
     windowBar->setIconButton(iconButton);
     windowBar->setMinButton(minButton);
     windowBar->setMaxButton(maxButton);
@@ -132,4 +131,9 @@ void WindowKitWidget::loadStyleSheet(Theme theme)
         setStyleSheet(QString::fromUtf8(qss.readAll()));
         qss.close();
     }
+}
+
+void WindowKitWidget::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
 }

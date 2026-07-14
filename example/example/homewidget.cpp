@@ -29,6 +29,7 @@
 #include "src/qwindowkit/windowkitwidget.h"
 #include "src/qwindowkit/witmainwindow.h"
 #include "src/screen/testwidgetgl.h"
+#include "setappwinfo.h"
 
 homewidget::homewidget(QWidget *parent)
 {
@@ -68,6 +69,14 @@ homewidget::homewidget(QWidget *parent)
 
     init();
     initDesktopFile();
+    srand(QDateTime::currentMSecsSinceEpoch());
+
+    for (int i = 0; i < desktopwidget->get_itemcount(); i++) {
+        desktopwidget->setTextColor(i, QColor(rand() % 256, rand() % 256,
+                                              rand() % 256));
+    }
+
+    // desktopwidget->setTextColor(QColor(222, 122, 211));
 
     // installEventFilter(this);
 }
@@ -86,63 +95,87 @@ void homewidget::init()
 
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#4caf50.svg";
     witem.name = "FFT";
+    witem.metaObject = &widegtFFT::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#8bc34a.svg";
     witem.name = "video";
+    witem.metaObject = &videoWidget::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#9e9e9e.svg";
     witem.name = "ListMessage";
+    witem.metaObject = &ListMessageView::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#388e3c.svg";
     witem.name = "Graphics";
+    witem.metaObject = &GraphicsWidget::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#689f38.svg";
     witem.name = "List";
+    witem.metaObject = &ListW::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#1976d2.svg";
     witem.name = "audio";
+    witem.metaObject = &Widget::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#2196f3.svg";
     witem.name = "layout";
+    witem.metaObject = &wLayout::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#d32f2f.svg";
     witem.name = "兽音";
+    witem.metaObject = &ShouYinW::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#f5f5f5.svg";
     witem.name = "异环抽卡";
+    witem.metaObject = &MainWindow::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#f57c00.svg";
     witem.name = "截屏1";
+    witem.metaObject = &screenWidgetShow::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#f44336.svg";
     witem.name = "截屏2";
+    witem.metaObject = &qmlWidgetLoader::staticMetaObject;
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#ff9800.svg";
+    witem.name = "截屏3";
+    witem.metaObject = &TestWidgetGL::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#ff9800.svg";
     witem.name = "customplotqml";
+    witem.metaObject = &CustomPlotQMLWidget::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
     witem.name = "地图";
+    witem.metaObject = &MapWidget::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/radio_button_checked/#ff9800.svg";
     witem.name = "地图下载";
+    witem.metaObject = &MapDownLoadWidget::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
     witem.name = "地图显示1";
+    witem.metaObject = &MapViewWidget::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/radio_button_checked/#ff9800.svg";
     witem.name = "地图显示2";
+    witem.metaObject = &MapView2Widget::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
     witem.name = "地图显示3";
+    witem.metaObject = &MapView3Widget::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/radio_button_checked/#ff9800.svg";
     witem.name = "QWindowKit";
+    witem.metaObject = &WindowKitWidget::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
     witem.name = "QWindowKitMainW";
+    witem.metaObject = &WitMainWindow::staticMetaObject;
     m_widgetList.append(witem);
-    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#ff9800.svg";
-    witem.name = "opengl测试";
+    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
+    witem.name = "设置窗口";
+    witem.metaObject = &setAppWInfo::staticMetaObject;
     m_widgetList.append(witem);
 
     foreach(auto node, m_widgetList) {
@@ -172,10 +205,14 @@ void homewidget::initDesktopFile()
                                                            filename,
                                                            pixmap)) continue;
         desktopItem node;
+        node.lnkName = fileList[i];
         node.fname = filename;
-        node.name = filename.split("/").last();
-        QStringList slist = node.name.split(".exe", Qt::SkipEmptyParts);
-        node.name = slist[slist.size() - 1];
+
+        // node.name = filename.split("/", Qt::SkipEmptyParts).last();
+        // QStringList slist = node.name.split(".exe", Qt::SkipEmptyParts);
+        // node.name = slist[slist.size() - 1];
+        node.name = node.lnkName.split("/", Qt::SkipEmptyParts).last();
+        node.name = node.name.split(".lnk", Qt::SkipEmptyParts).last();
         node.pixmap = pixmap;
         m_desktopList.append(node);
     }
@@ -189,103 +226,12 @@ void homewidget::initDesktopFile()
 
 void homewidget::showWidget(int index)
 {
-    if (m_widgetList.size() <= index) return;
-
-    if (m_widgetList[index].widget) {
-        if (m_widgetList[index].widget->isHidden()) {
-            qDebug() << "show widget:" << m_widgetList[index].name;
-            m_widgetList[index].widget->show();
-        }
+    if ((index < 0) || (index >= m_widgetList.size())) {
+        qDebug() << "Invalid widget index:" << index;
         return;
     }
-    QWidget *w = nullptr;
-
-    switch (index) {
-    case 0:
-#if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
-        w = new widegtFFT;
-#endif // if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
-        break;
-
-    case 1:
-        w = new videoWidget;
-        break;
-
-    case 2:
-        w = new ListMessageView;
-        break;
-
-    case 3:
-        w = new GraphicsWidget;
-        break;
-
-    case 4:
-        w = new ListW;
-        break;
-
-    case 5:
-        w = new Widget;
-        break;
-
-    case 6:
-        w = new wLayout;
-        break;
-
-    case 7:
-        w = new ShouYinW;
-        break;
-
-    case 8:
-        w = new MainWindow;
-        break;
-
-    case 9:
-        w = new screenWidgetShow;
-        break;
-
-    case 10:
-        w = new qmlWidgetLoader;
-        break;
-
-    case 11:
-        w = new CustomPlotQMLWidget;
-        break;
-
-    case 12:
-        w = new MapWidget;
-        break;
-
-    case 13:
-        w = new MapDownLoadWidget;
-        break;
-
-    case 14:
-        w = new MapViewWidget;
-        break;
-
-    case 15:
-        w = new MapView2Widget;
-        break;
-
-    case 16:
-        w = new MapView3Widget;
-        break;
-
-    case 17:
-        w = new WindowKitWidget;
-        break;
-
-    case 18:
-        w = new WitMainWindow;
-        break;
-
-    case 19:
-        w = new TestWidgetGL;
-        break;
-
-    default:
-        break;
-    }
+    QWidget *w = qobject_cast<QWidget *>(
+        m_widgetList[index].metaObject->newInstance());
 
     if (w) {
         m_widgetList[index].widget = w;

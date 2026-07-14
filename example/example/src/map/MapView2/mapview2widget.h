@@ -18,7 +18,7 @@ class MapView2Widget : public QWidget {
 
 public:
 
-    MapView2Widget(QWidget *parent = nullptr);
+    Q_INVOKABLE MapView2Widget(QWidget *parent = nullptr);
     ~MapView2Widget() override;
 
 private slots:

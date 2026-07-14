@@ -10,7 +10,7 @@ class ListW : public QWidget {
 
 public:
 
-    explicit ListW(QWidget *parent = nullptr);
+    Q_INVOKABLE explicit ListW(QWidget *parent = nullptr);
     ~ListW();
 
 signals:

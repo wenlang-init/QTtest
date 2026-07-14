@@ -46,6 +46,13 @@ set(videosources
     src/video/mediaplayerwidget.h
     src/video/popwidget.cpp
 )
+if(WIN32)
+    set(videosources
+        ${videosources}
+        src/video/ffmpegvideo.h
+        src/video/ffmpegvideo.cpp
+    )
+endif()
 file(GLOB graphicssources CONFIGURE_DEPENDS src/graphics/*.cpp src/graphics/*.h)
 file(GLOB qmlListsources CONFIGURE_DEPENDS src/qmlList/*.cpp src/qmlList/*.h)
 set(audiosources
@@ -130,8 +137,13 @@ set(publicsources
 
     src/public/lserialport.cpp
     src/public/lserialport.h
+
+    # ffmpeg 根据qimage和音频流(16bit)合成AV1视频
+    src/public/AVEncoder.cpp
+    src/public/AVEncoder.h
 )
 if(WIN32)
+    # dxgi 截屏
     set(publicsources
         ${publicsources}
         src/public/dxgigetscreen.cpp
@@ -256,6 +268,10 @@ set(PROJECT_SOURCES
     homewidget.h
     homewidget.cpp
 
+    setappwinfo.h
+    setappwinfo.cpp
+    setappwinfo.ui
+
     src/qwindowkit/windowkitwidget.h
     src/qwindowkit/windowkitwidget.cpp
     src/qwindowkit/witmainwindow.h
@@ -278,8 +294,19 @@ qt_add_resources(APP_RESOURCES
 # QMessageLogContext 获取日志上下文信息，包含文件名、行号、函数名等信息。
 # 定义 QT_MESSAGELOGCONTEXT 可以启用这些功能。
 add_compile_definitions(DEFINES QT_MESSAGELOGCONTEXT)
-set(TS_FILES example_zh_CN.ts)
-qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
+
+# 定义翻译文件
+# set(TS_FILES
+#     "${CMAKE_CURRENT_SOURCE_DIR}/i18n/example_zh_CN.ts"
+#     #"${CMAKE_CURRENT_SOURCE_DIR}/i18n/example_en_US.ts"
+# )
+# qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
+
+# Qt 6.7 开始引入 指定项目国际化语言列表
+#qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES zh_CN fr de)
+# 自动调用 lupdate 和 lrelease 生成 example_zh_CN.ts 文件
+#qt_add_translations(example)
+
 #target_sources(${PROJECT_NAME} PRIVATE ${APP_RESOURCES})
 #target_include_directories(${PROJECT_NAME} module/)
 
@@ -293,6 +320,8 @@ qt_add_executable(example
     MANUAL_FINALIZATION
     ${PROJECT_SOURCES}
     ${APP_RESOURCES}
+
+    #${QM_FILES}
 )
 
 # 获取目标的所有运行时依赖DLL，并在POST_BUILD阶段自动复制到可执行文件目录
@@ -386,7 +415,7 @@ if(WIN32)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE FALSE)
     else()
-         set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
+        set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
     endif()
     #set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE FALSE)
 endif()
@@ -512,24 +541,26 @@ if(WIN32)
     endif()
 endif()
 
-# paddle库
-set(PADDLEPATH D:/software/PaddleOCR/paddle_inference)
-if(WIN32)
-    if(MSVC)
-        target_include_directories(${PROJECT_NAME} PRIVATE ${PADDLEPATH}/paddle/include)
-        target_link_directories(${PROJECT_NAME} PRIVATE ${PADDLEPATH}/paddle/lib)
-        target_link_libraries(${PROJECT_NAME} PRIVATE
-            paddle_inference
-        )
-        add_custom_command(TARGET ${PROJECT_NAME}
-           POST_BUILD
-           COMMAND ${CMAKE_COMMAND} -E
-                copy_if_different
-                ${PADDLEPATH}/paddle/lib/paddle_inference.dll
-                "${CMAKE_BINARY_DIR}"
-        )
-    endif()
-endif()
+# paddle库 ,MSVC DEBUG模式下出现意想不到的错误(导致std::ofstream崩溃)
+# set(PADDLEPATH D:/software/PaddleOCR/paddle_inference)
+# if(WIN32)
+#     if(MSVC)
+#         if(CMAKE_BUILD_TYPE STREQUAL "Release")
+#             target_include_directories(${PROJECT_NAME} PRIVATE ${PADDLEPATH}/paddle/include)
+#             target_link_directories(${PROJECT_NAME} PRIVATE ${PADDLEPATH}/paddle/lib)
+#             target_link_libraries(${PROJECT_NAME} PRIVATE
+#                 paddle_inference
+#             )
+#             add_custom_command(TARGET ${PROJECT_NAME}
+#                POST_BUILD
+#                COMMAND ${CMAKE_COMMAND} -E
+#                     copy_if_different
+#                     ${PADDLEPATH}/paddle/lib/paddle_inference.dll
+#                     "${CMAKE_BINARY_DIR}"
+#             )
+#         endif()
+#     endif()
+# endif()
 
 # fftw 库
 set(FFTWPATH ${PROJECT_SOURCE_DIR}/thirdparty/fftw)
@@ -600,12 +631,12 @@ endif()
 # ffmpeg 库
 set(FFTMPEGPATH ${PROJECT_SOURCE_DIR}/thirdparty/ffmpeg)
 if(WIN32)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/windows/include)
-    target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/windows/lib)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/GyanD/windows/include)
+    target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/GyanD/windows/lib)
 
     target_link_libraries(${PROJECT_NAME} PRIVATE
         avcodec avformat avutil avdevice swscale
-        # swresample avfilter
+        swresample avfilter
     )
 
     # add_custom_command(TARGET ${PROJECT_NAME}
@@ -617,8 +648,8 @@ if(WIN32)
     # )
 # elseif(UNIX)
 #     if(LINUX)
-#         target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/include)
-#         target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/lib)
+#         target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/BtbN/linux/include)
+#         target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/BtbN/linux/lib)
 
 #         target_link_libraries(${PROJECT_NAME} PRIVATE
 #             avcodec avformat avutil
@@ -706,6 +737,7 @@ add_subdirectory(module/plot)
 add_subdirectory(module/decode)
 add_subdirectory(module/easyInput)
 # add_subdirectory(module/Mqtt)
+
 if(WIN32)
     add_subdirectory(module/qbreakpad)
 endif()
@@ -724,6 +756,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     easyInput
     QWKCore QWKWidgets QWKQuick WidgetFrame
 )
+
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE
         qbreakpads
