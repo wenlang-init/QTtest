@@ -10,6 +10,7 @@ class udpObject : public QObject {
 public:
 
     explicit udpObject(QObject *parent = nullptr);
+    ~udpObject();
     bool bindAll(qint16 port = 0);
 
     int  writeData(const QByteArray  & data,
@@ -24,6 +25,7 @@ signals:
 private:
 
     QUdpSocket *udpsocket;
+    QUdpSocket *udpsocketSend;
     bool isbind = false;
 };
 

@@ -5,6 +5,7 @@
 udpObject::udpObject(QObject *parent)
     : QObject{parent}
 {
+    udpsocketSend = new QUdpSocket(this);
     udpsocket = new QUdpSocket(this);
     connect(udpsocket, &QUdpSocket::readyRead, this, [&]() {
         QByteArray data;
@@ -78,9 +79,28 @@ udpObject::udpObject(QObject *parent)
     });
 }
 
+udpObject::~udpObject()
+{
+    udpsocket->close();
+    delete udpsocket;
+    udpsocketSend->close();
+    delete udpsocketSend;
+}
+
 bool udpObject::bindAll(qint16 port)
 {
     if (isbind) return true;
+
+    if (false == udpsocketSend->bind()) {
+        qWarning() << QString("bind failed,%1:%2,%3").
+            arg(udpsocketSend->localAddress().toString()).
+            arg(udpsocketSend->localPort()).
+            arg(udpsocketSend->errorString());
+        return false;
+    }
+    qInfo() << QString("udpsocket Send,%1:%2").
+        arg(udpsocketSend->localAddress().toString()).
+        arg(udpsocketSend->localPort());
 
     if (false == udpsocket->bind(QHostAddress::Any, port)) {
         qWarning() << QString("bind failed,%1:%2,%3").
@@ -90,7 +110,7 @@ bool udpObject::bindAll(qint16 port)
         return false;
     }
     isbind = true;
-    qInfo() << QString("have opened,%1:%2").
+    qInfo() << QString("udpsocket Recv,%1:%2").
         arg(udpsocket->localAddress().toString()).
         arg(udpsocket->localPort());
     return true;
@@ -111,10 +131,10 @@ int udpObject::writeData(const QByteArray  & data,
         len = data.size() - cnt;
 
         if (len > sendPackSize) len = sendPackSize;
-        ret = udpsocket->writeDatagram(data.data() + cnt, len, host, port);
+        ret = udpsocketSend->writeDatagram(data.data() + cnt, len, host, port);
 
         if (ret < 0) {
-            qWarning() << udpsocket->errorString();
+            qWarning() << udpsocketSend->errorString();
             return cnt;
         }
         cnt += ret;
