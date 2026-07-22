@@ -91,18 +91,20 @@ bool udpObject::bindAll(qint16 port)
 {
     if (isbind) return true;
 
-    if (false == udpsocketSend->bind()) {
-        qWarning() << QString("bind failed,%1:%2,%3").
-            arg(udpsocketSend->localAddress().toString()).
-            arg(udpsocketSend->localPort()).
-            arg(udpsocketSend->errorString());
-        return false;
-    }
-    qInfo() << QString("udpsocket Send,%1:%2").
-        arg(udpsocketSend->localAddress().toString()).
-        arg(udpsocketSend->localPort());
+    // if (false == udpsocketSend->bind()) {
+    //     qWarning() << QString("bind failed,%1:%2,%3").
+    //         arg(udpsocketSend->localAddress().toString()).
+    //         arg(udpsocketSend->localPort()).
+    //         arg(udpsocketSend->errorString());
+    //     return false;
+    // }
+    // qInfo() << QString("udpsocket Send,%1:%2").
+    //     arg(udpsocketSend->localAddress().toString()).
+    //     arg(udpsocketSend->localPort());
 
-    if (false == udpsocket->bind(QHostAddress::Any, port)) {
+    // 端口复用
+    if (false ==
+        udpsocket->bind(QHostAddress::Any, port, QUdpSocket::ReuseAddressHint)) {
         qWarning() << QString("bind failed,%1:%2,%3").
             arg(udpsocket->localAddress().toString()).
             arg(udpsocket->localPort()).

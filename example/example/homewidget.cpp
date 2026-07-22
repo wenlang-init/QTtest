@@ -68,7 +68,6 @@ homewidget::homewidget(QWidget *parent)
     });
 
     init();
-    initDesktopFile();
     srand(QDateTime::currentMSecsSinceEpoch());
 
     for (int i = 0; i < desktopwidget->get_itemcount(); i++) {
@@ -183,6 +182,8 @@ void homewidget::init()
     }
     desktopwidget->set_btn_current(0);
     qDebug() << m_widgetList.count();
+
+    initDesktopFile();
 }
 
 void homewidget::initDesktopFile()
