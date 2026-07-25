@@ -602,11 +602,14 @@ bool AV1Encoder::init()
 
     if (!codec) {
         codec = avcodec_find_encoder_by_name("libaom-av1");
-    }
 
-    if (!codec) {
-        qWarning() << "未找到 AV1 编码器，请确保 FFmpeg 编译时启用了 libsvtav1 或 libaom-av1";
-        return false;
+        if (!codec) {
+            qWarning() << "未找到 AV1 编码器，请确保 FFmpeg 编译时启用了 libsvtav1 或 libaom-av1";
+            return false;
+        }
+        qInfo() << "used encoder libaom-av1";
+    } else {
+        qInfo() << "used encoder libsvtav1";
     }
 
     // 3. 分配编码器上下文
@@ -672,6 +675,10 @@ bool AV1Encoder::init()
     }
     m_stream->id = m_formatCtx->nb_streams - 1;
     m_stream->time_base = m_codecCtx->time_base;
+
+    // 显式设置流级别的帧率
+    m_stream->avg_frame_rate = m_codecCtx->framerate;
+    m_stream->r_frame_rate = m_codecCtx->framerate;
 
     // 将编码器参数复制到流
     avcodec_parameters_from_context(m_stream->codecpar, m_codecCtx);
@@ -745,7 +752,7 @@ bool AV1Encoder::init()
 int AV1Encoder::test()
 {
     const int  width = 640, height = 480, fps = 30;
-    AV1Encoder encoder("output_av1.mp4", width, height, fps, 30 /* CRF */,
+    AV1Encoder encoder("1_av1.mp4", width, height, fps, 30 /* CRF */,
                        8 /* preset */);
 
     // 模拟生成连续帧（例如旋转的矩形）
@@ -753,7 +760,7 @@ int AV1Encoder::test()
     QPainter painter(&frame);
     int angle = 0;
 
-    for (int i = 0; i < 300; ++i) {
+    for (int i = 0; i < 1000; ++i) {
         frame.fill(Qt::black);
         painter.setBrush(Qt::red);
         painter.translate(width / 2, height / 2);

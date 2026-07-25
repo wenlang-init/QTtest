@@ -10,6 +10,7 @@
 #include <QSpinBox>
 #include <QPaintEvent>
 #include <QFileDialog>
+#include <QMediaDevices>
 #include <src/screen/ffmpegscreen.h>
 #include <windows.h>
 #include <src/public/dxgigetscreen.h>
@@ -33,10 +34,11 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
     QPushButton *pushbotton = new QPushButton(this);
     QPushButton *pushbottonrect = new QPushButton(this);
     QPushButton *pushbottonscreen = new QPushButton(this);
-    QCheckBox   *checkbox = new QCheckBox(this);
+    checkbox = new QCheckBox(this);
     QPushButton *pushbottonSaveAv1 = new QPushButton(this);
     QCheckBox   *checkboxUsedUpdate = new QCheckBox(this);
     QSpinBox    *spinBox = new QSpinBox(this);
+    QCheckBox   *checkboxStart = new QCheckBox("开始采集", this);
     checkboxshow = new QCheckBox(this);
     spinBoxFps = new QSpinBox(this);
     spinBox->setToolTip("保存帧率");
@@ -72,6 +74,7 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
     hlayout->addWidget(pushbotton);
     hlayout->addWidget(pushbottonrect);
     hlayout->addWidget(pushbottonscreen);
+    hlayout->addWidget(checkboxStart);
     hlayout->addWidget(labelfps);
 
     hlayout1->addWidget(checkboxshow);
@@ -88,6 +91,8 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
     vlayout->addLayout(hlayout);
     vlayout->addLayout(hlayout1);
 
+    // AVEncoder::test();
+    // AV1Encoder::test();
 
 #ifdef USEDOPENGLWINDOW
     m_glImageWindow = new GLImageWindow;
@@ -111,6 +116,26 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
     vlayout->addWidget(m_glImageWidget);
 #endif // ifdef USEDOPENGLWINDOW
 
+    m_systemAudioSource = new systemAudioSource;
+    connect(m_systemAudioSource, &systemAudioSource::audioSourceStatus, this,
+            [ = ](QAudio::State state) {
+        if ((state == QAudio::SuspendedState) ||
+            (state == QAudio::StoppedState)) {
+            qDebug() << state;
+        }
+    });
+    connect(m_systemAudioSource, &systemAudioSource::readData, this,
+            [ = ](QByteArray data) {
+        if (m_AVEncoderThread) m_AVEncoderThread->addAudio(data);
+    });
+    connect(this, &TestWidgetGL::saveImage,
+            this, [ = ](const QImage& image) {
+        if (m_AVEncoderThread) m_AVEncoderThread->addImage(image);
+    });
+    m_thread = new QThread(this);
+    m_systemAudioSource->moveToThread(m_thread);
+    m_thread->start();
+
     connect(checkbox, &QCheckBox::checkStateChanged, this, [ = ]
     {
         if (m_ffmscreen) {
@@ -123,6 +148,10 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
             m_capturer = nullptr;
         }
         resetSaveObject();
+
+        if (checkboxStart->isChecked()) {
+            startCollect();
+        }
     });
     connect(pushbottonSaveAv1, &QPushButton::clicked, this, [ = ]() {
         QString fileNames = QFileDialog::getSaveFileName(this,
@@ -132,6 +161,8 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
                                                              "(*.mp4)"));
 
         if (fileNames.isEmpty()) return;
+
+        if (!checkboxStart->isChecked()) return;
 
         if (QFile::exists(fileNames)) {
             // 如果还在处理，这里不允许覆盖
@@ -144,26 +175,29 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
             }
         }
 
-        if (m_saveAV1FromQImage) {
-            m_saveAV1FromQImage->stop();
-            m_saveAV1FromQImage = nullptr;
+        if (m_AVEncoderThread) {
+            m_AVEncoderThread->stop();
+            m_AVEncoderThread = nullptr;
+            m_systemAudioSource->colseSource();
         }
 
         if ((m_imageWidth > 0) && (m_imageHeight > 0)) {
-            m_saveAV1FromQImage = new SaveAV1FromQImage(fileNames,
-                                                        m_imageWidth,
-                                                        m_imageHeight,
-                                                        spinBox->value());
-            m_saveAV1Map.insert(m_saveAV1FromQImage, fileNames);
-            m_saveAV1FromQImage->usedUpdate(checkboxUsedUpdate->isChecked());
-            connect(this, &TestWidgetGL::saveImage,
-                    this, [ = ](const QImage& image) {
-                if (m_saveAV1FromQImage) m_saveAV1FromQImage->addImage(image);
-            });
-            connect(m_saveAV1FromQImage, &SaveAV1FromQImage::finish, this,
+            int sampleRate = 48000;
+            int channelCount = 2;
+
+            m_AVEncoderThread = new AVEncoderThread(fileNames,
+                                                    m_imageWidth,
+                                                    m_imageHeight,
+                                                    spinBox->value(),
+                                                    sampleRate,
+                                                    channelCount
+                                                    );
+            m_saveAV1Map.insert(m_AVEncoderThread, fileNames);
+            m_AVEncoderThread->usedUpdate(checkboxUsedUpdate->isChecked());
+            connect(m_AVEncoderThread, &AVEncoderThread::finish, this,
                     [ = ]() {
-                SaveAV1FromQImage *sam =
-                    qobject_cast<SaveAV1FromQImage *>(sender());
+                AVEncoderThread *sam =
+                    qobject_cast<AVEncoderThread *>(sender());
 
                 if (m_saveAV1Map.contains(sam)) {
                     m_saveAV1Map.remove(sam);
@@ -173,17 +207,52 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
                 // sam->wait();
                 // sam->deleteLater();
             });
-            connect(m_saveAV1FromQImage, &SaveAV1FromQImage::finished,
-                    m_saveAV1FromQImage, &SaveAV1FromQImage::deleteLater);
+            connect(m_AVEncoderThread, &AVEncoderThread::finished,
+                    m_AVEncoderThread, &AVEncoderThread::deleteLater);
 
-            m_saveAV1FromQImage->start();
-            qDebug() << fileNames << m_imageWidth << m_imageHeight;
+            /////////////////////////////////////////
+            QAudioFormat format;
+            format.setSampleRate(sampleRate);
+            format.setSampleFormat(QAudioFormat::Int16);
+            format.setChannelCount(channelCount);
+
+            // int bufferSize = m_AVEncoderThread->getAudioOneFrameSize() * 2;
+            int bufferSize = 1024 * 2 * 2;
+
+            // format.setChannelConfig(QAudioFormat::ChannelConfigStereo);
+
+            // 1. 获取所有音频输入设备
+            const QList<QAudioDevice>inputDevices = QMediaDevices::audioInputs();
+            QAudioDevice stereoMixDevice;
+
+            // 2. 遍历查找立体声混音设备
+            for (const QAudioDevice& device : inputDevices) {
+                if (device.description().contains("立体声混音",
+                                                  Qt::CaseInsensitive) ||
+                    device.description().contains("Stereo Mix",
+                                                  Qt::CaseInsensitive))
+                {
+                    stereoMixDevice = device;
+                    break;
+                }
+            }
+
+            if (stereoMixDevice.isNull()) {
+                return;
+            }
+
+            if (!stereoMixDevice.isFormatSupported(format)) return;
+
+            m_systemAudioSource->openSource(format, stereoMixDevice, bufferSize);
+
+            m_AVEncoderThread->start();
+            qInfo() << fileNames << m_imageWidth << m_imageHeight << sampleRate << channelCount;
         }
     });
     connect(checkboxUsedUpdate, &QCheckBox::checkStateChanged, this, [ = ]
     {
-        if (m_saveAV1FromQImage) {
-            m_saveAV1FromQImage->usedUpdate(checkboxUsedUpdate->isChecked());
+        if (m_AVEncoderThread) {
+            m_AVEncoderThread->usedUpdate(checkboxUsedUpdate->isChecked());
         }
     });
 
@@ -212,20 +281,21 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
     connect(pushbottonrect, &QPushButton::clicked, this, [ = ]() {
         RegionSelector selector;
         QRect m_rect = selector.selectRegion();
+
+        if (m_rect.isEmpty() || (m_rect.width() < 1) || (m_rect.height() < 1)) return;
+
         qreal scaleFactor = QGuiApplication::primaryScreen()->devicePixelRatio();
         m_rect.setRect(m_rect.x() * scaleFactor,
                        m_rect.y() * scaleFactor,
                        m_rect.width() * scaleFactor,
                        m_rect.height() * scaleFactor
                        );
-
-        qDebug() << m_rect;
+        m_screenRect = m_rect;
+        isHwnd = false;
         m_isPath = false;
 
-        if (!checkbox->isChecked()) {
-            loaderImageFFmpeg(m_rect);
-        } else {
-            loaderImageDXGI(m_rect, nullptr, false);
+        if (checkboxStart->isChecked()) {
+            startCollect();
         }
     });
 
@@ -243,20 +313,38 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
         m_path = fselector.selectShape();
         QRect m_rect = m_path.boundingRect().toRect();
 
+        if (m_rect.isEmpty() || (m_rect.width() < 1) || (m_rect.height() < 1)) return;
+
         qreal scaleFactor = QGuiApplication::primaryScreen()->devicePixelRatio();
         m_rect.setRect(m_rect.x() * scaleFactor,
                        m_rect.y() * scaleFactor,
                        m_rect.width() * scaleFactor,
                        m_rect.height() * scaleFactor
                        );
+        m_screenRect = m_rect;
+        isHwnd = false;
 
-        qDebug() << m_rect;
         m_isPath = true;
 
-        if (!checkbox->isChecked()) {
-            loaderImageFFmpeg(m_rect);
+        if (checkboxStart->isChecked()) {
+            startCollect();
+        }
+    });
+
+    connect(checkboxStart, &QCheckBox::checkStateChanged, this, [ = ]() {
+        if (checkboxStart->isChecked()) {
+            startCollect();
         } else {
-            loaderImageDXGI(m_rect, nullptr, false);
+            if (m_ffmscreen) {
+                delete m_ffmscreen;
+                m_ffmscreen = nullptr;
+            }
+
+            if (m_capturer) {
+                delete m_capturer;
+                m_capturer = nullptr;
+            }
+            resetSaveObject();
         }
     });
 
@@ -266,6 +354,7 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
 
         QVariant hwndqv = combox->itemData(index);
         HWND hwnd = hwndqv.value<HWND>();
+        m_hwnd = hwnd;
         int width = 1920, height = 1200;
         width = QGuiApplication::primaryScreen()->geometry().width();
         height = QGuiApplication::primaryScreen()->geometry().height();
@@ -282,6 +371,8 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
         if (!recta.isNull()) {
             m_rect = recta;
         }
+        m_screenRect = m_rect;
+
         qDebug() << hwnd
                  << FuncHelper::getInstance().getWindowProcessID(hwnd)
                  << FuncHelper::getInstance().getWindowClass(hwnd)
@@ -316,11 +407,13 @@ TestWidgetGL::TestWidgetGL(QWidget *parent)
         m_isPath = false;
 
         if (!checkbox->isChecked()) {
-            loaderImageFFmpeg(m_rect);
+            isHwnd = false;
         } else {
-            loaderImageDXGI(QRect(),
-                            hwnd,
-                            true);
+            isHwnd = true;
+        }
+
+        if (checkboxStart->isChecked()) {
+            startCollect();
         }
     });
 }
@@ -337,7 +430,13 @@ TestWidgetGL::~TestWidgetGL()
 
     if (m_glImageWindow) delete m_glImageWindow;
 
-    if (m_saveAV1FromQImage) m_saveAV1FromQImage->stop();
+    if (m_AVEncoderThread) m_AVEncoderThread->stop();
+
+    m_systemAudioSource->colseSource();
+    m_thread->quit();
+    m_thread->wait();
+    delete m_thread;
+    delete m_systemAudioSource;
 }
 
 void TestWidgetGL::loaderImageFFmpeg(const QRect& m_rect)
@@ -395,7 +494,7 @@ void TestWidgetGL::loaderImageFFmpeg(const QRect& m_rect)
 
             if (checkboxshow->isChecked()) emit loadImage(m_image);
 
-            if (m_saveAV1FromQImage) emit saveImage(m_image);
+            if (m_AVEncoderThread) emit saveImage(m_image);
 
             // update();
         });
@@ -433,7 +532,7 @@ void TestWidgetGL::loaderImageDXGI(const QRect& m_rect, HWND hwnd, bool ishwnd)
 
             if (checkboxshow->isChecked()) emit loadImage(m_image);
 
-            if (m_saveAV1FromQImage) emit saveImage(m_image);
+            if (m_AVEncoderThread) emit saveImage(m_image);
 
             // update();
         });
@@ -518,8 +617,24 @@ void TestWidgetGL::resetSaveObject()
     m_imageWidth = -1;
     m_imageHeight = -1;
 
-    if (m_saveAV1FromQImage) {
-        m_saveAV1FromQImage->stop();
-        m_saveAV1FromQImage = nullptr;
+    if (m_AVEncoderThread) {
+        m_AVEncoderThread->stop();
+        m_AVEncoderThread = nullptr;
+        m_systemAudioSource->colseSource();
+    }
+}
+
+void TestWidgetGL::startCollect()
+{
+    if (!isHwnd && (m_screenRect.isEmpty() ||
+                    (m_screenRect.width() < 1) ||
+                    (m_screenRect.height() < 1))) return;
+
+    if (!checkbox->isChecked()) {
+        qDebug() << m_screenRect;
+        loaderImageFFmpeg(m_screenRect);
+    } else {
+        qDebug() << m_screenRect << m_hwnd;
+        loaderImageDXGI(m_screenRect, m_hwnd, isHwnd);
     }
 }

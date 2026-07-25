@@ -8,6 +8,8 @@
 #include <QImage>
 #include <QPainterPath>
 #include "src/public/funchelper.h"
+#include "systemAudioSource.h"
+#include "src/public/AVEncoder.h"
 
 class QLabel;
 class QSpinBox;
@@ -41,10 +43,12 @@ protected:
 private:
 
     void resetSaveObject();
+    void startCollect();
 
 private:
 
     QLabel *labelfps;
+    QCheckBox *checkbox;
     QSpinBox *spinBoxFps;
     QCheckBox *checkboxshow;
     QPainterPath m_path;
@@ -55,18 +59,24 @@ private:
     int m_imageHeight = -1;
 
     // 用于存储多个 SaveAV1FromQImage 对象及其对应的文件名
-    QMap<SaveAV1FromQImage *, QString>m_saveAV1Map;
+    QMap<AVEncoderThread *, QString>m_saveAV1Map;
 
     GLImageWidget *m_glImageWidget = nullptr;
     GLImageWindow *m_glImageWindow = nullptr;
     ffmpegScreen *m_ffmscreen = nullptr;
-    SaveAV1FromQImage *m_saveAV1FromQImage = nullptr;
+    QThread *m_thread = nullptr;
+    systemAudioSource *m_systemAudioSource = nullptr;
+    AVEncoderThread *m_AVEncoderThread = nullptr;
     ContinuousScreenCapture *m_capturer = nullptr;
 
     qint64 m_allcount = 0, m_count = 0, m_fps = 0;
 
     QDateTime m_datetime = QDateTime::currentDateTime();
     QList<FuncHelper::WindowInfo>m_list;
+
+    QRect m_screenRect;
+    HWND m_hwnd;
+    bool isHwnd = false;
 };
 
 #endif // TESTWIDGETGL_H

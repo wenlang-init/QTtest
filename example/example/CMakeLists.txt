@@ -178,6 +178,9 @@ set(screensources
     src/screen/regionselector.cpp
     src/screen/freehandselector.h
     src/screen/freehandselector.cpp
+
+    src/screen/systemAudioSource.h
+    src/screen/systemAudioSource.cpp
 )
 
 # pffft

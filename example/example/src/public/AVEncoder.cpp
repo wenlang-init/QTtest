@@ -100,10 +100,27 @@ bool AVEncoder::init() {
     av_channel_layout_copy(&m_audioFrame->ch_layout, &m_audioCodecCtx->ch_layout);
     m_audioFrame->nb_samples = m_audioCodecCtx->frame_size; // 通常为 1024
 
+    // 是否支持可变帧大小
+    if (m_audioCodecCtx->codec->capabilities & AV_CODEC_CAP_VARIABLE_FRAME_SIZE) {
+        qDebug() << "支持可变帧大小" << m_audioCodecCtx->codec->capabilities;
+    }
+
+    // 是否允许你发送一个比 m_audioCodecCtx->frame_size 小的帧作为最后一帧
+    if (m_audioCodecCtx->codec->capabilities & AV_CODEC_CAP_SMALL_LAST_FRAME) {
+        qDebug() << "允许小于frame_size的最后一帧" << m_audioCodecCtx->codec->capabilities;
+    }
+
     if (av_frame_get_buffer(m_audioFrame, 0) < 0) {
         qCritical() << "Failed to allocate audio frame buffer";
         return false;
     }
+
+    // qDebug() << m_videoStream->avg_frame_rate.num
+    //          << m_videoStream->avg_frame_rate.den
+    //          << m_videoStream->r_frame_rate.num
+    //          << m_videoStream->r_frame_rate.den
+    //          << m_videoCodecCtx->framerate.num
+    //          << m_videoCodecCtx->framerate.den;
 
     // 写入文件头
     if (avformat_write_header(m_formatCtx, nullptr) < 0) {
@@ -141,11 +158,17 @@ bool AVEncoder::openOutputFile() {
 bool AVEncoder::initVideoCodec() {
     const AVCodec *codec = avcodec_find_encoder_by_name("libsvtav1");
 
-    if (!codec) codec = avcodec_find_encoder_by_name("libaom-av1");
-
     if (!codec) {
-        qCritical() << "AV1 encoder not found (libsvtav1 or libaom-av1 required)";
-        return false;
+        codec = avcodec_find_encoder_by_name("libaom-av1");
+
+        if (!codec) {
+            qCritical() <<
+                "AV1 encoder not found (libsvtav1 or libaom-av1 required)";
+            return false;
+        }
+        qInfo() << "used encoder libaom-av1";
+    } else {
+        qInfo() << "used encoder libsvtav1";
     }
 
     m_videoCodecCtx = avcodec_alloc_context3(codec);
@@ -190,6 +213,13 @@ bool AVEncoder::initVideoCodec() {
 
     m_videoStream->id = m_formatCtx->nb_streams - 1;
     m_videoStream->time_base = m_videoCodecCtx->time_base;
+
+    // m_videoStream->time_base = AVRational{ 1, 90000 }; // MP4 常用
+
+    // 显式设置流级别的帧率
+    m_videoStream->avg_frame_rate = m_videoCodecCtx->framerate;
+    m_videoStream->r_frame_rate = m_videoCodecCtx->framerate;
+
     avcodec_parameters_from_context(m_videoStream->codecpar, m_videoCodecCtx);
 
     return true;
@@ -271,110 +301,6 @@ bool AVEncoder::encodeVideo(const QImage& image) {
     return receivePackets(m_videoCodecCtx, m_videoStream);
 }
 
-#if 0
-# include <algorithm> // for std::min
-# include <QDebug>
-
-// 假设这些是类成员变量或上下文变量
-// SwrContext *m_swrCtx;
-// AVCodecContext *m_audioCodecCtx;
-// int m_sampleRate; // 目标采样率
-// uint8_t **outData; // 输出缓冲区指针数组
-// int maxOutSamples; // 输出缓冲区最大容量
-
-/**
- * @brief 执行音频重采样，自动处理输入数据过大导致的分片问题
- *
- * @param inData 输入音频数据指针数组 (Planar格式)
- * @param nbInSamples 输入的总样本数
- * @return int 成功处理的总输出样本数，负数表示错误
- */
-int AVEncoder::convertAudioWithLoop(uint8_t **inData, int nbInSamples) {
-    if (!inData || (nbInSamples <= 0)) {
-        return 0;
-    }
-
-    int totalOutSamples = 0;
-    int inOffset = 0; // 记录已处理的输入样本偏移量
-
-    // 获取每个样本的字节数，用于计算指针偏移
-    // 注意：如果是 Packed 格式，计算方式略有不同，这里以常见的 Planar 为例
-    int bytesPerSample = av_get_bytes_per_sample(m_audioCodecCtx->sample_fmt);
-    int channels = m_audioCodecCtx->ch_layout.nb_channels;
-
-    while (inOffset < nbInSamples) {
-        // 1. 计算剩余未处理的输入样本数
-        int remainingInSamples = nbInSamples - inOffset;
-
-        // 2. 反向计算：为了不让输出超过 maxOutSamples，本次最多允许处理多少输入样本？
-        // 公式：InSamples = OutSamples * (SrcRate / DstRate)
-        int allowedInSamples = av_rescale_rnd(maxOutSamples,
-                                              m_audioCodecCtx->sample_rate, // 源采样率
-                                              m_sampleRate,                 // 目标采样率
-                                              AV_ROUND_DOWN);
-
-        // 防止除以零或逻辑错误导致死循环
-        if (allowedInSamples <= 0) {
-            allowedInSamples = 1;
-        }
-
-        // 3. 确定本次实际处理的样本数
-        // 取“剩余量”和“允许量”中的较小值
-        int samplesToProcess = std::min(remainingInSamples, allowedInSamples);
-
-        // 4. 准备本次迭代的输入指针
-        // 因为 inData 是二维指针 (planar)，我们需要为每个声道计算偏移后的起始地址
-        uint8_t *curInData[SWR_CH_MAX];
-
-        for (int ch = 0; ch < channels; ch++) {
-            curInData[ch] = inData[ch] + inOffset * bytesPerSample;
-        }
-
-        // 5. 准备输出指针
-        // 如果 outData 是一个固定的大缓冲区，并且我们希望追加写入，
-        // 需要计算输出缓冲区的当前写入位置。
-        // 假设 outData 已经分配了足够容纳 maxOutSamples 的空间
-        uint8_t *curOutData[SWR_CH_MAX];
-
-        for (int ch = 0; ch < channels; ch++) {
-            // 注意：这里假设 outData 是每次调用前重新分配的，或者我们只关心单次转换结果
-            // 如果要追加到同一个大缓冲区，应该是: outData[ch] + totalOutSamples * bytesPerSample
-            curOutData[ch] = outData[ch];
-        }
-
-        // 6. 执行重采样
-        int ret = swr_convert(m_swrCtx,
-                              curOutData,
-                              maxOutSamples,     // 输出缓冲区能容纳的最大样本数
-                              (const uint8_t **)curInData,
-                              samplesToProcess); // 本次输入的样本数
-
-        if (ret < 0) {
-            qWarning() << "Audio resampling error:" << ret;
-            return ret;
-        }
-
-        // ret 是实际产生的输出样本数
-        int producedOutSamples = ret;
-
-        // 7. 处理生成的音频数据
-        // 在这里可以将 curOutData 中的 producedOutSamples 个样本写入文件、网络或队列
-        // processOutputFrame(curOutData, producedOutSamples);
-
-        // 8. 更新状态
-        totalOutSamples += producedOutSamples;
-        inOffset += samplesToProcess;
-
-        // 调试信息（可选）
-        // qDebug() << "Processed chunk:" << samplesToProcess << "in ->" <<
-        // producedOutSamples << "out";
-    }
-
-    return totalOutSamples;
-}
-
-#endif // if 0
-
 // ---------- 编码音频帧 ----------
 bool AVEncoder::encodeAudio(const int16_t *samples, int nb_samples) {
     if (!m_initialized || !samples || (nb_samples <= 0)) {
@@ -382,6 +308,44 @@ bool AVEncoder::encodeAudio(const int16_t *samples, int nb_samples) {
                     << m_initialized << samples << nb_samples;
         return false;
     }
+
+    int frameSize = getAudioFrameSize();                    // 例如 1024
+    int channelCount = m_channels;                          // 例如 2
+    int requiredSamplesPerFrame = frameSize * channelCount; // 例如 2048
+
+    // 1. 将新数据追加到内部缓冲区
+    m_audioBuffer.insert(m_audioBuffer.end(),
+                         samples,
+                         samples + nb_samples * channelCount);
+
+    // 2. 循环检查缓冲区是否足够编码一帧
+    while (static_cast<int>(m_audioBuffer.size()) >= requiredSamplesPerFrame) {
+        // 提取一帧数据
+        std::vector<int16_t> frameData(m_audioBuffer.begin(),
+                                       m_audioBuffer.begin() +
+                                       requiredSamplesPerFrame);
+
+        // 从缓冲区移除已提取的数据
+        m_audioBuffer.erase(m_audioBuffer.begin(),
+                            m_audioBuffer.begin() + requiredSamplesPerFrame);
+
+        // 编码这一帧
+        if (!encodeAudioFrame(frameData.data(), frameSize)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool AVEncoder::encodeAudioFrame(const int16_t *samples, int nb_samples)
+{
+    if (!m_initialized || !samples || (nb_samples <= 0)) {
+        qCritical() << "Invalid audio input parameters"
+                    << m_initialized << samples << nb_samples;
+        return false;
+    }
+#if 0
 
     // 1. 计算重采样后的输出样本数（向上取整）
     // 注意：这里我们需要确保输出的样本数不超过 m_audioFrame 能容纳的大小
@@ -410,7 +374,8 @@ bool AVEncoder::encodeAudio(const int16_t *samples, int nb_samples) {
 
         // 递归或循环处理剩余部分比较复杂，这里简化为只处理能放入一帧的数据
         // 在实际生产中，应该建立一个循环直到所有输入样本都被消耗
-        qWarning() << "Audio chunk too large, truncating to fit one frame.";
+        qWarning() << "Audio chunk too large, truncating to fit one frame."
+                   << out_samples << max_out_samples;
         nb_samples = allowed_in_samples;
         out_samples = max_out_samples;
     }
@@ -419,6 +384,9 @@ bool AVEncoder::encodeAudio(const int16_t *samples, int nb_samples) {
         qCritical() << "Resampled sample count is zero";
         return false;
     }
+#else // if 0
+    int out_samples = m_audioFrame->nb_samples;
+#endif // if 0
 
     // 2. 获取输出声道数
     int out_channels = m_audioCodecCtx->ch_layout.nb_channels;
@@ -465,8 +433,7 @@ bool AVEncoder::encodeAudio(const int16_t *samples, int nb_samples) {
     m_audioPts += converted;
 
     // 7. 发送帧到编码器
-    // 注意：此时 m_audioFrame->data 指向的是 frame 自己拥有的内存，
-    // 所以 avcodec_send_frame 是安全的，即使下一帧覆盖 out_buffer 也没关系（因为我们不再使用 out_buffer）
+    // 此时 m_audioFrame->data 指向的是 frame 自己拥有的内存，
     int ret = avcodec_send_frame(m_audioCodecCtx, m_audioFrame);
 
     if (ret < 0) {
@@ -480,10 +447,20 @@ bool AVEncoder::encodeAudio(const int16_t *samples, int nb_samples) {
 }
 
 // ---------- 写入单个包 ----------
-bool AVEncoder::writePacket(AVPacket *pkt, AVStream *stream) {
+bool AVEncoder::writePacket(AVPacket       *pkt,
+                            AVStream       *stream,
+                            AVCodecContext *codecCtx) {
     // 调整时间戳
-    av_packet_rescale_ts(pkt, stream->time_base, stream->time_base);
+    av_packet_rescale_ts(pkt, codecCtx->time_base, stream->time_base);
     pkt->stream_index = stream->index;
+
+    // static int testindex = 0;
+    // if (testindex++ < 6) qDebug() << pkt->pts << pkt->dts;
+
+    // 确保 DTS 有效，如果为 NOPTS，则设为 PTS (适用于无 B 帧或简单情况)
+    if (pkt->dts == AV_NOPTS_VALUE) {
+        pkt->dts = pkt->pts;
+    }
 
     int ret = av_interleaved_write_frame(m_formatCtx, pkt);
     av_packet_unref(pkt);
@@ -513,7 +490,7 @@ bool AVEncoder::receivePackets(AVCodecContext *codecCtx,
             return false;
         }
 
-        if (!writePacket(m_packet, stream)) return false;
+        if (!writePacket(m_packet, stream, codecCtx)) return false;
     }
     return true;
 }
@@ -521,6 +498,28 @@ bool AVEncoder::receivePackets(AVCodecContext *codecCtx,
 // ---------- 冲刷 ----------
 bool AVEncoder::flush() {
     if (!m_initialized) return true;
+
+    // 处理音频缓冲区中剩余不足一帧的数据
+    if (!m_audioBuffer.empty()) {
+        int frameSize = getAudioFrameSize();
+        int channelCount = m_channels;
+        int requiredSamplesPerFrame = frameSize * channelCount;
+
+        qDebug() << "Flushing remaining audio samples:" << m_audioBuffer.size() /
+            channelCount;
+
+        // 创建一个新的向量，大小为完整的一帧
+        std::vector<int16_t> finalFrame(requiredSamplesPerFrame, 0); // 初始化为0
+                                                                     // (静音)
+
+        // 将剩余数据拷贝进去
+        std::copy(m_audioBuffer.begin(), m_audioBuffer.end(), finalFrame.begin());
+
+        // 编码这最后一帧（包含补零）
+        encodeAudioFrame(finalFrame.data(), frameSize);
+
+        m_audioBuffer.clear();
+    }
 
     // 冲刷视频
     avcodec_send_frame(m_videoCodecCtx, nullptr);
@@ -557,11 +556,21 @@ bool AVEncoder::flush() {
 }
 
 #include <QPainter>
+#include <QFile>
+#include <QtEndian>
 
 int AVEncoder::test(void)
 {
+    QByteArray audioData;
+    QFile file("./20260725-083541.pcm");
+
+    if (file.open(QIODevice::ReadOnly)) {
+        audioData = file.readAll();
+        file.close();
+    }
+
     // 创建编码器
-    AVEncoder encoder("output_av1.mp4",
+    AVEncoder encoder("123.mp4",
                       640, 480, 30, // 视频参数
                       44100, 2,     // 音频参数：44.1kHz，立体声
                       0, 30, 8);    // 码率控制：CRF=30, preset=8
@@ -576,7 +585,57 @@ int AVEncoder::test(void)
     QPainter painter(&frame);
     int angle = 0;
 
-    int count = 3000;
+    int count = 300;
+
+    // 每帧数据个数
+    const double samplesPerFrameDouble =
+        static_cast<double>(44100) / 30;
+    const int samplesPerFrame =
+        static_cast<int>(std::round(samplesPerFrameDouble));
+
+    // const int samplesPerFrame = 1024;
+    // double    videTime = count / 30.0;                  // 视频时长
+    // double oneAudioTime = samplesPerFrame / 44100.0; // 每次的音频时长
+    // int audioCount = videTime / oneAudioTime;           // 同步视频时长的音频生成次数
+
+    int audioSize = count * samplesPerFrame * 2;
+    QVector<int16_t> audioData16;
+    {
+        int size16 = audioData.size() / 2 - audioData.size() % 2;
+
+        for (int i = 0; i < size16; i++) {
+            int16_t value = *(int16_t *)(audioData.data() + i * 2);
+
+            // value = qToBigEndian(value);
+            audioData16.append(value);
+        }
+
+        if (size16 < audioSize) {
+            int needcount = audioSize - size16;
+
+            if (needcount % 2) needcount += 1;
+            needcount = needcount / 2;
+
+            int   index = 0;
+            float w;
+
+            for (int i = 0; i < needcount; i++) {
+                // w = 2 * 3.14159 * 440 * i / 44100;
+
+                w = 2 * 3.14159 * 440 * index / 44100;
+
+                if (index < samplesPerFrame - 1) {
+                    index++;
+                } else {
+                    index = 0;
+                }
+                int16_t sample =
+                    static_cast<int16_t>(32767 * sin(w));
+                audioData16.append(sample);
+                audioData16.append(sample);
+            }
+        }
+    }
 
     for (int i = 0; i < count; ++i) {
         frame.fill(Qt::black);
@@ -593,22 +652,21 @@ int AVEncoder::test(void)
         }
 
         // 模拟音频数据（此处使用生成的正弦波，实际应从设备采集）
-        const int samplesPerFrame = 1024;
         std::vector<int16_t> audio(samplesPerFrame * 2); // 立体声
 
         for (int j = 0; j < samplesPerFrame; ++j) {
-            int16_t sample =
-                static_cast<int16_t>(32767 * sin(2 * 3.14159 * 440 * j / 44100));
-            audio[j * 2] = sample;
-            audio[j * 2 + 1] = sample;
+            // int16_t sample =static_cast<int16_t>
+            // (32767 * sin(2 * 3.14159 * 440 * j / 44100));
+            // audio[j * 2] = sample;
+            // audio[j * 2 + 1] = sample;
+            audio[j * 2] = audioData16[i * samplesPerFrame * 2 + j * 2];
+            audio[j * 2 + 1] = audioData16[i * samplesPerFrame * 2 + j * 2 + 1];
         }
 
         if (!encoder.encodeAudio(audio.data(), samplesPerFrame)) {
             qCritical() << "Audio encoding failed";
             break;
         }
-
-        // if (i % 10 == 0) qDebug() << "Encoded frame" << i;
     }
 
     encoder.flush();
@@ -663,18 +721,20 @@ int AVEncoder::test(void)
         avent->addImage(frame.copy()); // 显式拷贝以确保安全
 
         // 模拟音频数据
-        const int samplesPerFrame = 1024;
         std::vector<int16_t> audio(samplesPerFrame * 2);
 
         for (int j = 0; j < samplesPerFrame; ++j) {
-            int16_t sample =
-                static_cast<int16_t>(32767 * sin(2 * 3.14159 * 440 * j / 44100));
-            audio[j * 2] = sample;
-            audio[j * 2 + 1] = sample;
+            // int16_t sample =static_cast<int16_t>
+            // (32767 * sin(2 * 3.14159 * 440 * j / 44100));
+            // audio[j * 2] = sample;
+            // audio[j * 2 + 1] = sample;
+            audio[j * 2] = audioData16[i * samplesPerFrame * 2 + j * 2];
+            audio[j * 2 + 1] = audioData16[i * samplesPerFrame * 2 + j * 2 + 1];
         }
-
         avent->addAudio(audio);
     }
+
+    // QThread::sleep(2);
 
     // if (avent) avent->destory();
     if (avent) avent->stop();

@@ -6,8 +6,10 @@
 #include <QString>
 #include <QtEndian>
 #include <vector>
+#include <deque>
 #include <cstdint>
 #include <QDebug>
+#include <QFile>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -39,19 +41,30 @@ public:
 
     // int        convertAudioWithLoop(uint8_t **inData,
     //                                 int       nbInSamples);
-    bool       encodeAudio(const int16_t *samples,
-                           int            nb_samples);
-    bool       flush();
+    bool encodeAudio(const int16_t *samples,
+                     int            nb_samples);
+    bool flush();
+    int  getAudioFrameSize() {
+        if (m_audioCodecCtx) {
+            return m_audioCodecCtx->frame_size;
+        }
+        return 1024; // 默认回退值
+    }
 
     static int test(void);
 
 private:
 
+    // 辅助函数
+    bool encodeAudioFrame(const int16_t *data,
+                          int            samples);
+
     bool openOutputFile();
     bool initVideoCodec();
     bool initAudioCodec();
-    bool writePacket(AVPacket *pkt,
-                     AVStream *stream);
+    bool writePacket(AVPacket       *pkt,
+                     AVStream       *stream,
+                     AVCodecContext *codecCtx);
     bool receivePackets(AVCodecContext *codecCtx,
                         AVStream       *stream,
                         bool            flush = false);
@@ -77,6 +90,9 @@ private:
     int m_videoBitrate;
     int m_crf, m_preset;
     bool m_initialized;
+
+    // 音频内部缓冲区 (存储交错的 int16_t 数据)
+    std::deque<int16_t>m_audioBuffer;
 
     char errbuf[AV_ERROR_MAX_STRING_SIZE] = { 0 };
 };
@@ -104,6 +120,25 @@ public:
             wait();
         }
         delete this;
+    }
+
+    // 是否丢弃多余的音频帧数据
+    void setDiscardMoreAudioFrame(bool enable) {
+        m_isDiscardMoreAudioFrame = enable;
+    }
+
+    int getAudioFrameSize() {
+        return m_audioFrameSize;
+    }
+
+    int getAudioOneFrameSize() {
+        const double samplesPerFrameDouble =
+            static_cast<double>(m_sampleRate) / m_fps;
+        const int samplesPerFrame =
+            static_cast<int>(std::round(samplesPerFrameDouble));
+
+        // const int samplesPerFrame = getAudioFrameSize();
+        return samplesPerFrame * m_channels;
     }
 
     explicit AVEncoderThread(const QString& outputFile,
@@ -150,42 +185,30 @@ public:
     }
 
     void addAudio(const QByteArray& audio) {
+        if (audio.size() < 2) return;
+
+        const int16_t *dataPtr =
+            reinterpret_cast<const int16_t *>(audio.constData());
+        size_t dataCount = (audio.size() / 2);
+
         if (m_isRunning.load()) {
             // 转为16bit位宽数据
-            std::vector<int16_t> audiodata;
+            int count = audio.size() / 2 - audio.size() % 2;
 
-            for (int i = 0; i <= audio.size() - (m_channels * 2);
-                 i += (m_channels * 2)) {
-                const int16_t *p = (const int16_t *)(&audio.data()[i]);
+            if (count < m_channels) return;
 
-                for (int j = 0; j < m_channels; j++) {
-                    audiodata.push_back(p[j]);
-                }
-            }
+            // if (count % m_channels) count = count - 1;  // m_channels 1 or 2
 
             QMutexLocker locker(&m_mutexAudio);
-            m_countAudio++;
-
-            if (!m_usedUpdate) {
-                m_audioList.append(audiodata);
-            } else {
-                m_audioList.clear();
-                m_audio = audiodata;
-            }
+            m_audioData.insert(m_audioData.end(), dataPtr,
+                               dataPtr + dataCount);
         }
     }
 
     void addAudio(const std::vector<int16_t>& audio) {
         if (m_isRunning.load()) {
             QMutexLocker locker(&m_mutexAudio);
-            m_countAudio++;
-
-            if (!m_usedUpdate) {
-                m_audioList.append(audio);
-            } else {
-                m_audioList.clear();
-                m_audio = audio;
-            }
+            m_audioData.insert(m_audioData.end(), audio.begin(), audio.end());
         }
     }
 
@@ -205,11 +228,30 @@ protected:
             return;
         }
 
+        m_audioFrameSize = encoder.getAudioFrameSize();
+
         QImage image;
         std::vector<int16_t> audio;
         bool isNew = false;
 
+        // 计算每帧视频对应的音频样本数
+        // 44100 / 30 = 1470 样本/帧
+        // encodeAudio内部有缓存分片处理，这里samplesPerFrame可以传入任意值
+        const double samplesPerFrameDouble =
+            static_cast<double>(m_sampleRate) / m_fps;
+        const int samplesPerFrame =
+            static_cast<int>(std::round(samplesPerFrameDouble));
+
+        // const int samplesPerFrame = 1024;
+        const int audioFarmeSize = samplesPerFrame * m_channels;
+
+        qint64 videoFramCount = 0;
+        qint64 audioFramCount = 0;
+
         while (m_isRunning.load()) {
+            // 视频
+            isNew = false;
+
             if (m_usedUpdate) {
                 QMutexLocker locker(&m_mutex);
 
@@ -233,39 +275,49 @@ protected:
             if (isNew) {
                 if (!encoder.encodeVideo(image)) {
                     stop();
-                    emit error("Encode failed");
+                    qWarning() << "Encode Video failed";
+                    emit error("Encode Video failed");
                     break;
                 }
+                videoFramCount++;
             }
+
+            // 音频
+            if (m_isDiscardMoreAudioFrame &&
+                (videoFramCount < audioFramCount)) continue;
             isNew = false;
 
-            if (m_usedUpdate) {
-                QMutexLocker locker(&m_mutexAudio);
+            QMutexLocker locker(&m_mutexAudio);
 
-                if (m_countTempAudio == m_countAudio) {
-                    m_countTempAudio = m_countAudio;
-                    audio = m_audio;
-                    isNew = true;
-                }
-                locker.unlock();
-            } else {
-                QMutexLocker locker(&m_mutexAudio);
+            if (m_audioData.size() >= audioFarmeSize) {
+                // 1. 拷贝前 n 个元素构造新向量
+                audio = std::vector<int16_t>(m_audioData.begin(),
+                                             m_audioData.begin() +
+                                             audioFarmeSize);
 
-                if (m_audioList.size() > 0) {
-                    audio = m_audioList.first();
-                    m_audioList.removeFirst();
-                    isNew = true;
-                }
-                locker.unlock();
+                // 使用移动迭代器构造新向量（元素被移走）
+                // auto first =
+                // std::make_move_iterator(m_audioData.begin());
+                // auto last = std::make_move_iterator(m_audioData.begin()
+                //                                     + audioFarmeSize);
+                // audio = std::vector<int16_t>(first, last);
+
+                // 2. 从原向量中移除这些元素
+                // 使用移动迭代器,移除原向量中的前 audioFarmeSize 个元素（此时它们处于“有效但未指定”状态，会被析构）
+                m_audioData.erase(m_audioData.begin(),
+                                  m_audioData.begin() + audioFarmeSize);
+                isNew = true;
             }
+            locker.unlock();
 
             if (isNew) {
-                if (!encoder.encodeAudio(audio.data(),
-                                         audio.size() / m_channels)) {
+                if (!encoder.encodeAudio(audio.data(), samplesPerFrame)) {
                     stop();
-                    emit error("Encode failed");
+                    qWarning() << "Encode Audio failed";
+                    emit error("Encode Audio failed");
                     break;
                 }
+                audioFramCount++;
             }
 
             QThread::usleep(10);
@@ -274,31 +326,49 @@ protected:
         if (!m_usedUpdate) {
             // 处理剩余队列
             QList<QImage> tempImgList;
-            QList<std::vector<int16_t> > tempAudioList;
 
             {
                 QMutexLocker locker(&m_mutex);
                 tempImgList = m_imageList;
                 m_imageList.clear();
-            }
-            {
-                QMutexLocker locker(&m_mutexAudio);
-                tempAudioList = m_audioList;
-                m_audioList.clear();
+                qDebug() << tempImgList.size();
             }
 
             for (const auto& img : tempImgList) {
                 if (!encoder.encodeVideo(img)) {
-                    emit error("Encode failed");
+                    qWarning() << "Encode Video failed";
+                    emit error("Encode Video failed");
                     break;
                 }
+                videoFramCount++;
             }
+        }
 
-            for (const auto& aud : tempAudioList) {
-                if (!encoder.encodeAudio(aud.data(), aud.size() / m_channels)) {
-                    emit error("Encode failed");
-                    break;
-                }
+        // 处于音频
+        std::deque<int16_t> tempAudioData;
+        {
+            QMutexLocker locker(&m_mutexAudio);
+            tempAudioData = m_audioData;
+            m_audioData.clear();
+            qDebug() << tempAudioData.size();
+        }
+        long long index = 0;
+
+        while (tempAudioData.size() >= index + audioFarmeSize) {
+            // 当音频帧大于视频帧时，不再编码音频
+            if (m_isDiscardMoreAudioFrame &&
+                (videoFramCount < audioFramCount)) break;
+
+            if (index < 0) break;
+            auto begin = tempAudioData.begin() + index;
+            auto end = begin + audioFarmeSize;
+            audio = std::vector<int16_t>(begin, end);
+            index += audioFarmeSize;
+
+            if (!encoder.encodeAudio(audio.data(), samplesPerFrame)) {
+                qWarning() << "Encode Audio failed";
+                emit error("Encode Audio failed");
+                break;
             }
         }
 
@@ -330,12 +400,13 @@ private:
 
     QList<QImage>m_imageList;
     QImage m_image;
-    int m_count = 0;          // 总帧数
-    int m_countTemp = 0;      // 判断是否有新帧
-    QList<std::vector<int16_t> >m_audioList;
-    std::vector<int16_t>m_audio;
-    int m_countAudio = 0;     // 总帧数
-    int m_countTempAudio = 0; // 判断是否有新帧
+    int m_count = 0;     // 总帧数
+    int m_countTemp = 0; // 判断是否有新帧
+    std::deque<int16_t>m_audioData;
+
+    int m_audioFrameSize = 1024;
 
     std::atomic_bool m_isRunning{ true };
+
+    bool m_isDiscardMoreAudioFrame = false;
 };
