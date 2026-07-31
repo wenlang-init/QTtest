@@ -10,10 +10,20 @@ set(CMAKE_AUTORCC ON)
 project(easyInput LANGUAGES C CXX)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
+find_package(Qt6 REQUIRED COMPONENTS
     Widgets
     Core
+    Core5Compat
 )
+
+set(ADD_QML_VIEW 1)
+if(${ADD_QML_VIEW})
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
+        QuickWidgets
+        Quick
+        QuickControls2
+    )
+endif()
 
 # if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
 #     find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
@@ -43,7 +53,46 @@ file(GLOB EASYINPUT_SOURCE CONFIGURE_DEPENDS
     widget/virtual_input/*.h
 )
 
-add_library(${PROJECT_NAME} ${EASYINPUT_SOURCE})
+if(${ADD_QML_VIEW})
+    set(EASYINPUT_SOURCE
+        ${EASYINPUT_SOURCE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/quick/inputQml.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/quick/inputQml.h
+    )
+
+    # set(QML_SOUCES
+    #     ${CMAKE_CURRENT_SOURCE_DIR}/quick/qml/virtualkeyboard.qml
+    # )
+    # target_sources(${PROJECT_NAME} PRIVATE
+    #     ${QML_SOUCES}
+    # )
+    # # 标记该文件为“仅头文件/非编译”
+    # set_source_files_properties(
+    #     ${QML_SOUCES}
+    #     PROPERTIES HEADER_FILE_ONLY TRUE
+    # )
+    # # load("./qml/virtualkeyboard.qml")
+    # add_custom_command(TARGET ${PROJECT_NAME}
+    #    POST_BUILD
+    #    COMMAND ${CMAKE_COMMAND} -E
+    #         copy_directory_if_different
+    #         ${CMAKE_CURRENT_SOURCE_DIR}/quick/qml
+    #         "${CMAKE_BINARY_DIR}/easyInput"
+    # )
+
+    qt_add_resources(QML_SOUCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/quick/qml.qrc
+    )
+    add_library(${PROJECT_NAME}
+        ${EASYINPUT_SOURCE}
+        ${QML_SOUCES}
+    )
+else()
+    add_library(${PROJECT_NAME}
+        ${EASYINPUT_SOURCE}
+    )
+endif()
+
 # 动态库
 # add_library(${PROJECT_NAME}
 #     SHARED
@@ -65,9 +114,18 @@ message(STATUS ${PTHREADPATH})
 message(STATUS ${CMAKE_BINARY_DIR})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    Qt${QT_VERSION_MAJOR}::Widgets
-    Qt${QT_VERSION_MAJOR}::Core
+    Qt6::Widgets
+    Qt6::Core
 )
+
+if(${ADD_QML_VIEW})
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        Qt6::QuickWidgets
+        Qt6::Quick
+        Qt6::QuickControls2
+        Qt6::Core5Compat
+    )
+endif()
 
 # if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
 #     target_link_libraries(${PROJECT_NAME} PRIVATE

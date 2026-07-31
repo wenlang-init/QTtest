@@ -1,0 +1,26 @@
+<RCC>
+    <qresource prefix="/">
+        <file>virtualboardqml/VirtualKeyboard.qml</file>
+        <file>virtualboardqml/ButtonKeyInput.qml</file>
+        <file>virtualboardqml/VirtualKeyInput.qml</file>
+        <file>virtualboardqml/VirtualKeyMore.qml</file>
+        <file>virtualboardqml/VirtualKeySymbol.qml</file>
+        <file>virtualboardqml/VirtualKeyT9.qml</file>
+        <file>virtualboardqml/VirtualKeyT26.qml</file>
+        <file>picture/delete_white.png</file>
+        <file>picture/delete_white1.png</file>
+        <file>picture/emoji.png</file>
+        <file>picture/enter.png</file>
+        <file>picture/hid.png</file>
+        <file>picture/key_check.png</file>
+        <file>picture/microphone.png</file>
+        <file>picture/moreb.png</file>
+        <file>picture/multimedia.png</file>
+        <file>picture/set.png</file>
+        <file>picture/space.png</file>
+        <file>picture/upper_1.png</file>
+        <file>picture/upper_2.png</file>
+        <file>picture/upper_white.png</file>
+        <file>picture/Background.png</file>
+    </qresource>
+</RCC>

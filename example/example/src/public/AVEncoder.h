@@ -80,6 +80,8 @@ private:
     AVFrame *m_audioFrame;
     AVPacket *m_packet;
 
+    bool m_useAv1 = true;
+
     int64_t m_videoPts;
     int64_t m_audioPts; // 以采样数计
 

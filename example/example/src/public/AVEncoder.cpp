@@ -156,19 +156,39 @@ bool AVEncoder::openOutputFile() {
 
 // ---------- 初始化视频编码器 ----------
 bool AVEncoder::initVideoCodec() {
-    const AVCodec *codec = avcodec_find_encoder_by_name("libsvtav1");
+    const AVCodec *codec;
 
-    if (!codec) {
-        codec = avcodec_find_encoder_by_name("libaom-av1");
+    if (m_useAv1) {
+        codec = avcodec_find_encoder_by_name("libsvtav1");
 
         if (!codec) {
-            qCritical() <<
-                "AV1 encoder not found (libsvtav1 or libaom-av1 required)";
-            return false;
+            codec = avcodec_find_encoder_by_name("libaom-av1");
+
+            if (!codec) {
+                qCritical() <<
+                    "AV1 encoder not found (libsvtav1 or libaom-av1 required)";
+                return false;
+            }
+            qInfo() << "used encoder libaom-av1";
+        } else {
+            qInfo() << "used encoder libsvtav1";
         }
-        qInfo() << "used encoder libaom-av1";
     } else {
-        qInfo() << "used encoder libsvtav1";
+        // 使用 libx264 (最常用) 或 h264_nvenc (NVIDIA硬件加速)
+        codec = avcodec_find_encoder_by_name("libx264");
+
+        if (!codec) {
+            // 如果找不到 libx264，可以尝试默认的 h264 编码器
+            codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+
+            if (!codec) {
+                qWarning() << "Could not find H.264 encoder";
+                return false;
+            }
+            qInfo() << "used encoder AV_CODEC_ID_H264";
+        } else {
+            qInfo() << "used encoder libx264";
+        }
     }
 
     m_videoCodecCtx = avcodec_alloc_context3(codec);
@@ -183,25 +203,55 @@ bool AVEncoder::initVideoCodec() {
     m_videoCodecCtx->pix_fmt = AV_PIX_FMT_YUV420P;
     m_videoCodecCtx->thread_count = 0; // 自动多线程
 
-    // 码率控制：CRF 优先，否则用固定码率
-    if (m_videoBitrate > 0) {
-        m_videoCodecCtx->bit_rate = m_videoBitrate;
-        m_videoCodecCtx->rc_max_rate = m_videoBitrate;
-        m_videoCodecCtx->rc_buffer_size = m_videoBitrate;
+    if (m_useAv1) {
+        // 码率控制：CRF 优先，否则用固定码率
+        if (m_videoBitrate > 0) {
+            m_videoCodecCtx->bit_rate = m_videoBitrate;
+            m_videoCodecCtx->rc_max_rate = m_videoBitrate;
+            m_videoCodecCtx->rc_buffer_size = m_videoBitrate;
+        } else {
+            m_videoCodecCtx->flags |= AV_CODEC_FLAG_QSCALE;
+            m_videoCodecCtx->global_quality = m_crf * FF_QP2LAMBDA;
+        }
+        av_opt_set(m_videoCodecCtx->priv_data,
+                   "preset",
+                   QString::number(m_preset).toUtf8().constData(),
+                   0);
+
+        if (strcmp(codec->name, "libaom-av1") == 0) {
+            m_videoCodecCtx->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
+        }
     } else {
-        m_videoCodecCtx->flags |= AV_CODEC_FLAG_QSCALE;
-        m_videoCodecCtx->global_quality = m_crf * FF_QP2LAMBDA;
-    }
-    av_opt_set(m_videoCodecCtx->priv_data,
-               "preset",
-               QString::number(m_preset).toUtf8().constData(),
-               0);
+        // 设置 H.264 特定选项
+        // Libx264 推荐使用私有选项来设置 CRF 和 Preset
 
-    if (strcmp(codec->name, "libaom-av1") == 0) {
-        m_videoCodecCtx->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
-    }
+        // 设置 CRF (Constant Rate Factor)
+        // 范围通常是 0-51，越低质量越高。23 是默认值。
+        if (m_videoBitrate <= 0) {
+            av_opt_set(m_videoCodecCtx->priv_data, "crf", "23", 0);
 
-    if (avcodec_open2(m_videoCodecCtx, codec, nullptr) < 0) {
+            // av_opt_set(m_videoCodecCtx->priv_data,"crf",m_crf,0);
+        } else {
+            // 如果指定了码率，使用码率控制
+            m_videoCodecCtx->bit_rate = m_videoBitrate;
+
+            // 对于 H.264，如果指定码率，通常不需要设置 crf，或者可以结合 vbv 使用
+        }
+
+        // 设置 Preset
+        // Libx264 的 preset 是字符串: ultrafast, superfast, veryfast, faster, fast,
+        // medium, slow, slower, veryslow, placebo
+        av_opt_set(m_videoCodecCtx->priv_data,
+                   "preset", "ultrafast", 0);
+
+        // 设置调优 (Tune): film, animation, grain, stillimage 等
+        // 如果是实时流，建议 zerolatency
+        // av_opt_set(m_videoCodecCtx, "tune", "zerolatency", 0);
+    }
+    int ret;
+
+    if ((ret = avcodec_open2(m_videoCodecCtx, codec, nullptr)) < 0) {
+        av_strerror(ret, errbuf, sizeof(errbuf));
         qCritical() << "Failed to open video codec";
         return false;
     }

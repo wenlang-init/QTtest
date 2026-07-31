@@ -335,15 +335,14 @@ qt_add_executable(example
 #     COMMAND_EXPAND_LISTS
 # )
 
-target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/shellbulid/build.sh)
-target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/shellbulid/pack.sh)
+set(UNCOMPILE_FILE
+    ${CMAKE_CURRENT_SOURCE_DIR}/shellbulid/build.sh
+    ${CMAKE_CURRENT_SOURCE_DIR}/shellbulid/pack.sh
+)
+target_sources(${PROJECT_NAME} PRIVATE ${UNCOMPILE_FILE})
 # 标记该文件为“仅头文件/非编译”
 set_source_files_properties(
-    ${CMAKE_CURRENT_SOURCE_DIR}/shellbulid/build.sh
-    PROPERTIES HEADER_FILE_ONLY TRUE
-)
-set_source_files_properties(
-    ${CMAKE_CURRENT_SOURCE_DIR}/shellbulid/pack.sh
+    ${UNCOMPILE_FILE}
     PROPERTIES HEADER_FILE_ONLY TRUE
 )
 

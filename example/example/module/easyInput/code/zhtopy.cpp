@@ -110,6 +110,12 @@ QString ZhToPy::get_chinese_pinyin_head_gb2312(QString node)
     qpinyin_head.clear();
     QTextCodec *codec2gbk2312 = QTextCodec::codecForName("gb2312");
 
+    // 跟现代的转换方式,在msvc中默认没有启用ICU,因此不可用,官方计划在6.10继承ICU
+    // auto sdec=QStringDecoder("gb2312");
+    // QString utf16str = sdec(node.toUtf8());
+    // auto senc=QStringEncoder("gb2312");
+    // QByteArray gb2312Data = senc(node);
+
     if (codec2gbk2312 != NULL) {
         QByteArray buf = codec2gbk2312->fromUnicode(node); // qt使用Unicode，转化为gb2312
 

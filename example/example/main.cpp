@@ -12,7 +12,8 @@
 #include "homewidget.h"
 #include "src/public/funchelper.h"
 
-// #include "input_method_widget.h"
+#include <input_method_widget.h>
+#include "quick/inputQml.h"
 
 // #if defined(_MSC_VER) && defined(QT_NO_DEBUG)
 // # include "paddle_inference_api.h"
@@ -339,7 +340,7 @@ int main(int argc, char *argv[])
                       << "\norganization:" << qApp->organizationDomain()
                       << ";" << qApp->organizationName();
 
-    // SETAUTOSHOW_INPUT_METHOD_WIDGET();
+    // Input_Method_Widget::instance();
 
     // QStringList families = QFontDatabase::families();
     // qDebug() << families;

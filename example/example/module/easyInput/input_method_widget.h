@@ -50,12 +50,21 @@ public:
 
 protected:
 
-    void resizeEvent(QResizeEvent *event);
-    void paintEvent(QPaintEvent *event);
-    void keyPressEvent(QKeyEvent *event);
+    bool eventFilter(QObject *watched,
+                     QEvent  *event) override;
+    void resizeEvent(QResizeEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 
 private:
 
+    bool isEditableWidget(QWidget *widget) const;
+
+    // 移动到下方
+    void adjustKeyboardPosition(QWidget *focuseWidget);
+
+    // 移动到光标右下
+    void adjustKeyboardToCursor(QWidget *focuseWidget);
     void set_show();
 
 signals:
@@ -92,21 +101,29 @@ private:
     T9_Widget *virtualinputwidget2;
 };
 
+#if 0
+
 // 在主函数中使用，自动显示输入法
-#define SETAUTOSHOW_INPUT_METHOD_WIDGET()                                  \
-    QObject::connect(qApp, &QApplication::focusChanged,                    \
-                     [&](QWidget *old,                                     \
-                         QWidget *now) {                                   \
-        if (Input_Method_Widget::instance().isHidden()  &&                 \
-            now && (now->inherits("QLineEdit") ||                          \
-                    now->inherits("QTextEdit")                             \
-                    )                                                      \
-            ) {                                                            \
-            Input_Method_Widget::instance().set_mode(INPUT_MODE_VIRTUAL1); \
-            Input_Method_Widget::instance().set_input_mode(                \
-                INPUT_MODE_VALUE_T26);                                     \
-            Input_Method_Widget::instance().show();                        \
-        }                                                                  \
+# define SETAUTOSHOW_INPUT_METHOD_WIDGET()                                         \
+    QObject::connect(qApp, &QApplication::focusChanged,                            \
+                     [&](QWidget *old,                                             \
+                         QWidget *now) {                                           \
+        if (Input_Method_Widget::instance().isHidden() && now) {                   \
+            if ((now->inherits("QLineEdit") ||                                     \
+                 now->inherits("QTextEdit") ||                                     \
+                 now->inherits("QPlainTextEdit") ||                                \
+                 now->inherits("QSpinBox") ||                                      \
+                 now->inherits("QDoubleSpinBox")                                   \
+                 )) {                                                              \
+                if (Input_Method_Widget::instance().isHidden()) {                  \
+                    Input_Method_Widget::instance().set_mode(INPUT_MODE_VIRTUAL1); \
+                    Input_Method_Widget::instance().set_input_mode(                \
+                        INPUT_MODE_VALUE_T26);                                     \
+                    Input_Method_Widget::instance().show();                        \
+                }                                                                  \
+            }                                                                      \
+        }                                                                          \
     })
+#endif // if 0
 
 #endif // INPUT_METHOD_WIDGET_H
