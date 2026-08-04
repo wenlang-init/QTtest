@@ -187,6 +187,12 @@ static inline void printMessage(const CxxLog::LOG_TYPE& logType,
 
 CxxLog::~CxxLog()
 {
+    stop();
+    INFO_PRINT("\n");
+}
+
+void CxxLog::stop()
+{
     m_stopThread = true;
 
     if (m_thread.joinable()) m_thread.join();

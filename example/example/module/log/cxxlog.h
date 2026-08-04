@@ -27,6 +27,8 @@ public:
 
     virtual ~CxxLog();
 
+    void stop();
+
     bool initLog(const std::string & logDir,
                  const unsigned int& flushMs,
                  const unsigned int& fileLogMaxSize);

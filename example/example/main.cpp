@@ -13,7 +13,8 @@
 #include "src/public/funchelper.h"
 
 #include <input_method_widget.h>
-#include "quick/inputQml.h"
+
+// #include "quick/inputQml.h"
 
 // #if defined(_MSC_VER) && defined(QT_NO_DEBUG)
 // # include "paddle_inference_api.h"
@@ -166,9 +167,12 @@ BOOL WINAPI HandlerRoutine(DWORD dwCtrlType) {
 void handle_signal(int sig)
 {
     INFO_LOG_CXX("wait log finish. systemsig=%d\n", sig);
-
-    // destinyLog();
-    // INFO_PRINT_LOG("write log finish. while exit\n");
+# ifdef USEDCXXLOG
+    CxxLog::getInstance().stop();
+# else // ifdef USEDCXXLOG
+    destinyLog();
+# endif // ifdef USEDCXXLOG
+    INFO_PRINT_LOG("write log finish. while exit\n");
     exit(0);
 }
 
@@ -201,13 +205,16 @@ void exitAT() {
 
 int main(int argc, char *argv[])
 {
+#if defined(_WIN32)
     FuncHelper::AttachConsoleAndRedirect();
+#endif // if defined(_WIN32)
 #ifdef USEDCXXLOG
     REDIRECT_QTMESSAGE_LOG_CXX(nullptr);
 #else // ifdef USEDCXXLOG
     REDIRECT_QTMESSAGE_LOG(nullptr);
 #endif // ifdef USEDCXXLOG
 
+    exitAT();
 #if defined(_WIN32) || defined(_WIN64)
 
     // 第二个参数FALSE为卸载钩子
@@ -236,8 +243,6 @@ int main(int argc, char *argv[])
             FATAL_LOG_CXX("33333333333333333 %d\n", errorCode);
         }
     }
-
-    exitAT();
 #else // if defined(_WIN32) || defined(_WIN64)
     initexitDetection();
 #endif // if defined(_WIN32) || defined(_WIN64)

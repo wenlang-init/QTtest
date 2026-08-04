@@ -143,8 +143,8 @@ set(publicsources
     src/public/AVEncoder.h
 )
 if(WIN32)
-    # dxgi 截屏
     set(publicsources
+        # dxgi 截屏
         ${publicsources}
         src/public/dxgigetscreen.cpp
         src/public/dxgigetscreen.h
@@ -155,6 +155,18 @@ if(WIN32)
 endif()
 
 set(screensources
+    # opengl image 窗口
+    src/screen/glimagewindow.cpp
+    src/screen/glimagewidget.h
+    src/screen/glimagewidget.cpp
+    src/screen/glimagewindow.h
+
+    # 桌面窗口区域选择
+    src/screen/regionselector.h
+    src/screen/regionselector.cpp
+    src/screen/freehandselector.h
+    src/screen/freehandselector.cpp
+
     src/screen/screenwidget.h
     src/screen/screenwidget.cpp
     src/screen/ffmpegscreen.h
@@ -165,19 +177,9 @@ set(screensources
     src/screen/qmlwidgetloader.h
     #src/screen/imageFetcher.qml
 
-    # opengl image 窗口
-    src/screen/glimagewindow.cpp
-    src/screen/glimagewidget.h
-    src/screen/glimagewidget.cpp
-    src/screen/glimagewindow.h
-
+    # dxgi截屏任意窗口 opengl显示图像 ffmpeg编码 AV1 AAC
     src/screen/testwidgetgl.h
     src/screen/testwidgetgl.cpp
-
-    src/screen/regionselector.h
-    src/screen/regionselector.cpp
-    src/screen/freehandselector.h
-    src/screen/freehandselector.cpp
 
     src/screen/systemAudioSource.h
     src/screen/systemAudioSource.cpp
@@ -240,6 +242,14 @@ set(mapsources
     src/map/MapView3/mapview3widget.ui
 )
 
+set(qwindowkit_sources
+    # qwindowkit
+    src/qwindowkit/windowkitwidget.h
+    src/qwindowkit/windowkitwidget.cpp
+    src/qwindowkit/witmainwindow.h
+    src/qwindowkit/witmainwindow.cpp
+)
+
 set(MODULE_SOURCES
     ${mwsources}
     ${videosources}
@@ -252,14 +262,21 @@ set(MODULE_SOURCES
     ${sqosources}
     ${publicsources}
     ${pffftsource}
-    ${mapsources}
 )
+
+if(WIN32)
+    set(MODULE_SOURCES
+        ${MODULE_SOURCES}
+        ${screensources}
+        ${mapsources}
+        ${qwindowkit_sources}
+    )
+endif()
 
 if(WIN32 OR LINUX)
     set(MODULE_SOURCES
         ${MODULE_SOURCES}
         ${fftsources}
-        ${screensources}
     )
 endif()
 
@@ -275,11 +292,6 @@ set(PROJECT_SOURCES
     setappwinfo.cpp
     setappwinfo.ui
 
-    src/qwindowkit/windowkitwidget.h
-    src/qwindowkit/windowkitwidget.cpp
-    src/qwindowkit/witmainwindow.h
-    src/qwindowkit/witmainwindow.cpp
-
     ${TS_FILES}
     ${MODULE_SOURCES}
 )
@@ -289,10 +301,13 @@ qt_add_resources(APP_RESOURCES
     ${CMAKE_SOURCE_DIR}/resources/QtTheme/QtTheme.qrc
     ${CMAKE_SOURCE_DIR}/resources/MacOS/MacOS.qrc
 )
-qt_add_resources(APP_RESOURCES
-    ${CMAKE_SOURCE_DIR}/resources/widgetframe/shared.qrc
-    #${CMAKE_SOURCE_DIR}/module/qwindowkit-1.5.0/examples/shared/resources/shared.qrc
-)
+
+if(WIN32)
+    qt_add_resources(APP_RESOURCES
+        ${CMAKE_SOURCE_DIR}/resources/widgetframe/shared.qrc
+        #${CMAKE_SOURCE_DIR}/module/qwindowkit-1.5.0/examples/shared/resources/shared.qrc
+    )
+endif()
 
 # QMessageLogContext 获取日志上下文信息，包含文件名、行号、函数名等信息。
 # 定义 QT_MESSAGELOGCONTEXT 可以启用这些功能。
@@ -648,48 +663,63 @@ if(WIN32)
     #         ${FFTMPEGPATH}/windows/bin/avcodec-62.dll
     #         "${CMAKE_BINARY_DIR}"
     # )
-# elseif(UNIX)
-#     if(LINUX)
-#         target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/BtbN/linux/include)
-#         target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/BtbN/linux/lib)
+elseif(UNIX)
+    if(LINUX)
+        set(USED_CURRENT_FFMPEG 1)
+        if(USED_CURRENT_FFMPEG)
+            target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/BtbN/linux/include)
+            target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/BtbN/linux/lib)
 
-#         target_link_libraries(${PROJECT_NAME} PRIVATE
-#             avcodec avformat avutil
-#             #swresample swscale avdevice avfilter
-#         )
-#         #find_package(PkgConfig REQUIRED) # 如果找不到会直接报错，不需要手动判断
-#         # find_package(PkgConfig QUIET) # 找不到不会终止
-#         # if(PkgConfig_FOUND)
-#         #     pkg_check_modules(AVFORMAT REQUIRED libavformat)
-#         #     pkg_check_modules(AVCODEC REQUIRED libavcodec)
-#         #     pkg_check_modules(AVUTIL REQUIRED libavutil)
-#         #     target_include_directories(${PROJECT_NAME} PRIVATE ${AVFORMAT_INCLUDE_DIRS})
-#         #     target_include_directories(${PROJECT_NAME} PRIVATE ${AVCODEC_INCLUDE_DIRS})
-#         #     target_include_directories(${PROJECT_NAME} PRIVATE ${AVUTIL_INCLUDE_DIRS})
-#         #     target_link_libraries(${PROJECT_NAME} PRIVATE
-#         #         ${AVFORMAT_LIBRARIES} ${AVCODEC_LIBRARIES} ${AVUTIL_LIBRARIES}
-#         #     )
-#         # else()
-#         #     message(FATAL_ERROR "PkgConfig not found, cannot continue")
-#         #     # 设置 PKG_CONFIG_PATH 以支持非标准路径 (可选)
-#         #     set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${CUSTOM_FFMPEG_PATH}/lib/pkgconfig")
-#         #     pkg_check_modules(PC_FFMPEG QUIET libavcodec libavformat libavutil libswresample)
-#         #     if(NOT PC_FFMPEG_FOUND)
-#         #         # 引入已经存在的动态库avcodec
-#         #         #add_library(avcodec SHARED IMPORTED)
-#         #         #指定所添加依赖库的导入路径
-#         #         #set_target_properties(avcodec PROPERTIES IMPORTED_LOCATION ./libavcodec.so )
+            target_link_libraries(${PROJECT_NAME} PRIVATE
+                avcodec avformat avutil swscale avdevice
+                swresample avfilter
+            )
+        else()
+            find_package(PkgConfig REQUIRED) # 如果找不到会直接报错，不需要手动判断
+            find_package(PkgConfig QUIET) # 找不到不会终止
+            if(PkgConfig_FOUND)
+                pkg_check_modules(AVFORMAT REQUIRED libavformat)
+                pkg_check_modules(AVCODEC REQUIRED libavcodec)
+                pkg_check_modules(AVUTIL REQUIRED libavutil)
+                pkg_check_modules(AVSWSCALE REQUIRED libswscale)
+                pkg_check_modules(AVSWRESAMPLE REQUIRED libswresample)
+                target_include_directories(${PROJECT_NAME} PRIVATE ${AVFORMAT_INCLUDE_DIRS})
+                target_include_directories(${PROJECT_NAME} PRIVATE ${AVCODEC_INCLUDE_DIRS})
+                target_include_directories(${PROJECT_NAME} PRIVATE ${AVUTIL_INCLUDE_DIRS})
+                target_include_directories(${PROJECT_NAME} PRIVATE ${AVSWSCALE_INCLUDE_DIRS})
+                target_include_directories(${PROJECT_NAME} PRIVATE ${AVSWRESAMPLE_INCLUDE_DIRS})
+                target_link_libraries(${PROJECT_NAME} PRIVATE
+                    ${AVFORMAT_LIBRARIES} ${AVCODEC_LIBRARIES} ${AVUTIL_LIBRARIES}
+                    ${AVSWSCALE_LIBRARIES} ${AVSWRESAMPLE_LIBRARIES}
+                )
+            else()
+                message(FATAL_ERROR "PkgConfig not found, cannot continue")
+                set(CUSTOM_FFMPEG_PATH ${FFTMPEGPATH}/BtbN/linux)
+                # 设置 PKG_CONFIG_PATH 以支持非标准路径 (可选)
+                set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${CUSTOM_FFMPEG_PATH}/lib/pkgconfig")
+                pkg_check_modules(PC_FFMPEG QUIET libavcodec libavformat libavutil libswresample libswscale)
+                if(NOT PC_FFMPEG_FOUND)
+                    # 引入已经存在的动态库avcodec
+                    #add_library(avcodec SHARED IMPORTED)
+                    #指定所添加依赖库的导入路径
+                    #set_target_properties(avcodec PROPERTIES IMPORTED_LOCATION ./libavcodec.so )
 
-#         #         target_include_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/include)
-#         #         target_link_directories(${PROJECT_NAME} PRIVATE ${FFTMPEGPATH}/linux/lib)
+                    target_include_directories(${PROJECT_NAME} PRIVATE ${CUSTOM_FFMPEG_PATH}/include)
+                    target_link_directories(${PROJECT_NAME} PRIVATE ${CUSTOM_FFMPEG_PATH}/lib)
 
-#         #         target_link_libraries(${PROJECT_NAME} PRIVATE
-#         #             avcodec avformat avutil
-#         #             #swresample swscale avdevice avfilter
-#         #         )
-#         #     endif()
-#         # endif()
-#     endif()
+                    target_link_libraries(${PROJECT_NAME} PRIVATE
+                        avcodec avformat avutil swresample swscale
+                        #avdevice avfilter
+                    )
+                else()
+                    target_include_directories(${PROJECT_NAME} PRIVATE ${PC_FFMPEG_INCLUDE_DIRS})
+                    target_link_libraries(${PROJECT_NAME} PRIVATE
+                        ${PC_FFMPEG_LIBRARIES}
+                    )
+                endif()
+            endif()
+        endif()
+    endif()
  endif()
 
 # set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -742,11 +772,10 @@ add_subdirectory(module/easyInput)
 
 if(WIN32)
     add_subdirectory(module/qbreakpad)
+    add_subdirectory(module/qwindowkit-1.5.0)
+    add_subdirectory(module/qwindowkit-1.5.0/examples/shared/widgetframe)
 endif()
 
-add_subdirectory(module/qwindowkit-1.5.0)
-
-add_subdirectory(module/qwindowkit-1.5.0/examples/shared/widgetframe)
 # qm_configure_target(${PROJECT_NAME}
 #     #QT_LINKS Widgets
 #     LINKS QWKCore QWKWidgets QWKQuick WidgetFrame
@@ -756,12 +785,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     plot
     decodepublic
     easyInput
-    QWKCore QWKWidgets QWKQuick WidgetFrame
 )
 
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE
         qbreakpads
         #breakpads
+        QWKCore QWKWidgets QWKQuick WidgetFrame
     )
 endif()

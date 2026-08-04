@@ -15,20 +15,22 @@
 #include "src/audio/widget.h"
 #include "src/layout/wlayout.h"
 #include "src/souyin/shouyinw.h"
+#include "src/fftw/customplotqmlwidget.h"
 #if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
 # include "src/fftw/widegtfft.h"
+#endif // if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
+#if defined(Q_OS_WINDOWS)
+# include "src/qwindowkit/windowkitwidget.h"
+# include "src/qwindowkit/witmainwindow.h"
 # include "src/screen/screenwidget.h"
 # include "src/screen/qmlwidgetloader.h"
-#endif // if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
-#include "src/fftw/customplotqmlwidget.h"
-#include "src/map/mapwidget.h"
-#include "src/map/MapDownload/mapdownloadwidget.h"
-#include "src/map/MapView/mapviewwidget.h"
-#include "src/map/MapView2/mapview2widget.h"
-#include "src/map/MapView3/mapview3widget.h"
-#include "src/qwindowkit/windowkitwidget.h"
-#include "src/qwindowkit/witmainwindow.h"
-#include "src/screen/testwidgetgl.h"
+# include "src/screen/testwidgetgl.h"
+# include "src/map/mapwidget.h"
+# include "src/map/MapDownload/mapdownloadwidget.h"
+# include "src/map/MapView/mapviewwidget.h"
+# include "src/map/MapView2/mapview2widget.h"
+# include "src/map/MapView3/mapview3widget.h"
+#endif // if defined(Q_OS_WINDOWS)
 #include "setappwinfo.h"
 
 homewidget::homewidget(QWidget *parent)
@@ -128,6 +130,15 @@ void homewidget::init()
     witem.name = "异环抽卡";
     witem.metaObject = &MainWindow::staticMetaObject;
     m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/check_box_checked/#ff9800.svg";
+    witem.name = "customplotqml";
+    witem.metaObject = &CustomPlotQMLWidget::staticMetaObject;
+    m_widgetList.append(witem);
+    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
+    witem.name = "设置窗口";
+    witem.metaObject = &setAppWInfo::staticMetaObject;
+    m_widgetList.append(witem);
+#if defined(Q_OS_WINDOWS)
     witem.imageurl = ":/QtTheme/icon/check_box_checked/#f57c00.svg";
     witem.name = "截屏1";
     witem.metaObject = &screenWidgetShow::staticMetaObject;
@@ -137,12 +148,8 @@ void homewidget::init()
     witem.metaObject = &qmlWidgetLoader::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/radio_button_checked/#ff9800.svg";
-    witem.name = "截屏3";
+    witem.name = "截屏和保存";
     witem.metaObject = &TestWidgetGL::staticMetaObject;
-    m_widgetList.append(witem);
-    witem.imageurl = ":/QtTheme/icon/check_box_checked/#ff9800.svg";
-    witem.name = "customplotqml";
-    witem.metaObject = &CustomPlotQMLWidget::staticMetaObject;
     m_widgetList.append(witem);
     witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
     witem.name = "地图";
@@ -172,10 +179,7 @@ void homewidget::init()
     witem.name = "QWindowKitMainW";
     witem.metaObject = &WitMainWindow::staticMetaObject;
     m_widgetList.append(witem);
-    witem.imageurl = ":/QtTheme/icon/radio_button_checked/#4caf50.svg";
-    witem.name = "设置窗口";
-    witem.metaObject = &setAppWInfo::staticMetaObject;
-    m_widgetList.append(witem);
+#endif // if defined(Q_OS_WINDOWS)
 
     foreach(auto node, m_widgetList) {
         desktopwidget->additem(node.imageurl, node.name);
@@ -183,7 +187,9 @@ void homewidget::init()
     desktopwidget->set_btn_current(0);
     qDebug() << m_widgetList.count();
 
+#if defined(Q_OS_WINDOWS)
     initDesktopFile();
+#endif // if defined(Q_OS_WINDOWS)
 }
 
 void homewidget::initDesktopFile()
@@ -289,7 +295,7 @@ void homewidget::keyPressEvent(QKeyEvent *event)
 void homewidget::widgetDestroyed() {
     for (int i = 0; i < m_widgetList.size(); i++) {
         if (m_widgetList[i].widget == sender()) {
-            qDebug() << "widget destroyed:" << m_widgetList[i].name;
+            qDebug() << "widget destroyed:" << m_widgetList[i].name << sender();
             m_widgetList[i].widget = nullptr;
             break;
         }
