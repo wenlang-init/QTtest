@@ -91,6 +91,10 @@ public:
 
     bool       killExec(const QString& sExename);
 
+    void       getALLFilePath(const QString& sPath,
+                              QStringList  & fileList,
+                              bool           isRecursion = true);
+
 #if defined(Q_OS_WINDOWS)
     struct WindowInfo {
         HWND    hwnd;

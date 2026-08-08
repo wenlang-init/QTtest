@@ -6,6 +6,7 @@
 #include <QTime>
 #include <QEventLoop>
 #include <QFileInfo>
+#include <QDirIterator>
 #include <QFileIconProvider>
 #include "cxxlog.h"
 
@@ -379,6 +380,24 @@ bool FuncHelper::killExec(const QString& sExename)
     p.close();
 #endif // ifdef __WIN32
     return true;
+}
+
+void FuncHelper::getALLFilePath(const QString& sPath,
+                                QStringList  & fileList,
+                                bool           isRecursion)
+{
+    QDirIterator *it;
+
+    if (isRecursion) {
+        it = new QDirIterator(sPath, QDirIterator::Subdirectories); // 支持递归遍历
+    } else {
+        it = new QDirIterator(sPath, QDirIterator::NoIteratorFlags);
+    }
+
+    while (it->hasNext()) {
+        fileList.append(it->next());
+    }
+    delete it;
 }
 
 #if defined(Q_OS_WINDOWS)
@@ -1410,8 +1429,22 @@ bool FuncHelper::getLinkInfo(const QString& sfilename,
 {
     QFileInfo finfo(sfilename);
 
-    if ((finfo.exists() == false) ||
-        (!finfo.isSymLink() && !finfo.isShortcut())) return false;
+    // if ((finfo.exists() == false) ||
+    //     (!finfo.isSymLink() &&
+    //      !finfo.isShortcut())) return false;
+
+    if (!finfo.exists() || !finfo.isFile()) return false;
+
+#if defined(Q_OS_WINDOWS)
+
+    // 不是.lnk文件
+    if (!finfo.isShortcut()) return false;
+
+#else // ifdef Q_OS_WINDOWS
+
+    if (!finfo.isSymLink()) return false;
+
+#endif // ifdef Q_OS_WINDOWS
 
     QFileIconProvider ficon;
     pixmap = ficon.icon(finfo).pixmap(32, 32);

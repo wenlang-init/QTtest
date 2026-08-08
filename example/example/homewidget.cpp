@@ -3,6 +3,7 @@
 #include "src/desktop/desktopwidget.h"
 #include <QHBoxLayout>
 #include <QKeyEvent>
+#include <QFileInfoList>
 #include "src/public/funchelper.h"
 
 // #include "input_method_widget.h"
@@ -199,28 +200,33 @@ void homewidget::initDesktopFile()
     QString desktopPath =
         QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
     QStringList fileList;
-    QDir dir(desktopPath);
 
-    foreach(auto file, dir.entryList(QDir::NoDotAndDotDot | QDir::AllEntries)) {
-        if (file.endsWith(".lnk")) {
-            fileList.append(desktopPath + "/" + file);
-        }
-    }
+    FuncHelper::getInstance()
+    .getALLFilePath(desktopPath, fileList, true); // 递归获取桌面目录下的所有文件路径
 
-    for (int i = 0; i < fileList.size(); i++) {
-        if (false == FuncHelper::getInstance().getLinkInfo(fileList[i],
-                                                           filename,
-                                                           pixmap)) continue;
+    foreach(auto file, fileList) {
+        QFileInfo fileinfo(file);
+        QFileIconProvider ficon;
         desktopItem node;
-        node.lnkName = fileList[i];
-        node.fname = filename;
 
-        // node.name = filename.split("/", Qt::SkipEmptyParts).last();
-        // QStringList slist = node.name.split(".exe", Qt::SkipEmptyParts);
-        // node.name = slist[slist.size() - 1];
-        node.name = node.lnkName.split("/", Qt::SkipEmptyParts).last();
-        node.name = node.name.split(".lnk", Qt::SkipEmptyParts).last();
-        node.pixmap = pixmap;
+        if (!fileinfo.exists() || !fileinfo.isFile()) continue;
+
+        node.pixmap = ficon.icon(fileinfo).pixmap(32, 32);
+        node.lnkName = file;
+
+        if (file.endsWith(".lnk")) {
+            // 不是.lnk文件
+            // if (!fileinfo.isShortcut()) continue;
+            node.fname = fileinfo.symLinkTarget();
+            node.name = node.lnkName.split("/", Qt::SkipEmptyParts).last();
+            node.name = node.name.split(".lnk", Qt::SkipEmptyParts).last();
+        } else if (file.endsWith(".exe")) {
+            node.fname = file;
+            node.name = node.lnkName.split("/", Qt::SkipEmptyParts).last();
+            node.name = node.name.split(".exe", Qt::SkipEmptyParts).last();
+        } else {
+            continue;
+        }
         m_desktopList.append(node);
     }
 
@@ -267,7 +273,7 @@ void homewidget::showW(int index)
             } else {
                 workDir = QCoreApplication::applicationFilePath();
             }
-            qDebug() << workDir;
+            qDebug() << m_desktopList[i].fname << workDir;
             FuncHelper::getInstance().execCmd(m_desktopList[i].fname, workDir,
                                               {});
         }
